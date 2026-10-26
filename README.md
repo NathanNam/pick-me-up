@@ -8,7 +8,12 @@ Live: **https://pickmeup-sf.vercel.app**
 
 Made for a parent who does the school run almost every day and worries about being late for pick-up, because a Giants game, a concert at Chase Center or a street fair can turn a 12-minute drive into 30. Open it and it answers one question: *when do I leave?*
 
-- **Leave-by time and countdown** for the next drop-off or pick-up, from Google's *pessimistic* traffic forecast for that exact departure time, plus the extra minutes you choose.
+<p>
+  <img src="docs/phone.jpg" alt="Phone: Leave by 2:14 PM on a wood-panel card, with a GAME AT CHASE CENTER ON YOUR ROUTE sticker and the route map" width="280">
+  <img src="docs/laptop.jpg" alt="Laptop: the leave-by card beside the map, with On your way and the notepad Upcoming trips underneath" width="520">
+</p>
+
+- **Leave-by time and countdown** for the next drop-off or pick-up. It comes from Google's *pessimistic* traffic forecast for that exact departure time, plus the extra minutes you choose (5–20).
 - **What's on your way:**
   - Giants, Warriors and Valkyries home games
   - concerts and shows at Chase Center, Oracle Park, Bill Graham Civic, Golden Gate Park and the Cow Palace
@@ -16,9 +21,13 @@ Made for a parent who does the school run almost every day and worries about bei
   - permitted street closures (races, fairs, block parties, construction)
   - live 511 incidents
 
-  Each is checked against the times you'd be driving and the streets on your route. If something is on the route, the leave-by time moves 10 minutes earlier.
-- **Coming up:** the next school days at a glance, with one tap to mark a day with no school.
-- **Add to Home Screen** on iPhone for an app-like icon.
+  Each is checked against the times you'd be driving and the streets on your route. The status reads like a bumper sticker: green for clear, amber for something nearby, orange-red for something on the route.
+- **Leaves earlier when it should.** A crowd or a major incident on the route adds 10 minutes. A closed street adds 5, since Google may already route around it. The card always says why.
+- **Upcoming trips:** the next school runs on a notepad page. Tap a trip to see the leave time, the bad-day drive and every event in full. Tap **Skip** for a day with no school.
+- **School days and one-off trips.** Mon–Fri by default, with Sat and Sun optional. You can add one-off trips, such as a weekend school event or an early pick-up, which show up on that day only.
+- **Phone and laptop.** One column on a phone. On a laptop, the answer and the map sit side by side. On iPhone, use **Add to Home Screen** for an app icon.
+
+The look borrows the early-'80s family station wagon: wood-panel sides, chrome trim, harvest gold and burnt orange. It's inspired by the era, not any film or brand.
 
 ## Privacy
 
@@ -54,12 +63,13 @@ Games are cross-checked: the team schedules are the record, and Ticketmaster's c
 - `public/`: the page (no build step): `app.js`, and `lib/` shared with the server: `geo.js` (polylines, distances), `time.js` (Pacific time), `impact.js` (route and time matching).
 - `lib/events.mjs`: collects and normalizes the day's events. `lib/google.mjs`: geocoding and the leave-by plan.
 - `api/`: Vercel functions (`events`, `geocode`, `plan`).
+- `public/art/pickup.jpg`: the pick-up picture on the setup screen and share image.
 - `scripts/dev.mjs`: local server with the same headers as Vercel. `scripts/brand/make.mjs`: favicons and share image.
 
 ```sh
 cp .env.example .env.local   # add your keys
 npm test                     # node --test
-npm run dev                  # http://localhost:3000
+npm run dev                  # http://localhost:3000 (PORT=3420 npm run dev for another port)
 ```
 
 ### Google Maps setup
@@ -68,6 +78,6 @@ In Google Cloud, enable **Routes API** and **Geocoding API**, then create an API
 
 ## Credits
 
-Map data © OpenStreetMap contributors. Maps by [Leaflet](https://leafletjs.com) (BSD-2). Font: [Nunito](https://fonts.google.com/specimen/Nunito) (OFL). Not affiliated with any team, venue or agency. Times are estimates.
+Map data © OpenStreetMap contributors. Maps by [Leaflet](https://leafletjs.com) (BSD-2). Fonts: [Fraunces](https://fonts.google.com/specimen/Fraunces) and [Nunito](https://fonts.google.com/specimen/Nunito) (both OFL). Not affiliated with any team, venue or agency. Times are estimates.
 
 Built by [Nathan Nam](https://www.nathannam.com) with Claude Code.
