@@ -10,6 +10,7 @@ import { assess, verdict, extraMinutes } from './lib/impact.js';
 
 const KEY = 'pickmeup.v1';
 const PLAN_KEY = 'pickmeup.plan.v1';
+const HOME_KEY = 'pickmeup.home.v1';
 const app = document.getElementById('app');
 const $ = (sel, root = document) => root.querySelector(sel);
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
@@ -20,7 +21,41 @@ const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } },
 };
-let settings = store.get(KEY);
+let settings = migrate(store.get(KEY));
+
+/**
+ * Settings used to hold one start and one destination. Now there's a list of
+ * places and each trip picks its own: `from`, `to`, and optionally `then`, the
+ * drive onward afterwards (home after pick-up). Old settings become Home and
+ * School with every trip Home → School, and pick-up then back Home.
+ */
+function migrate(s) {
+  if (!s || s.places || !s.from?.at || !s.to?.at) return s;
+  const { from, to, lastRoute, ...rest } = s;
+  return {
+    ...rest,
+    places: [{ id: 'home', ...from }, { id: 'school', ...to }],
+    trips: s.trips.map((t) => ({ ...t, from: 'home', to: 'school', then: t.id === 'pick' ? 'home' : '' })),
+    extras: (s.extras ?? []).map((x) => ({ ...x, from: 'home', to: 'school', then: '' })),
+    routes: {},
+  };
+}
+
+const placeById = (id) => settings.places.find((p) => p.id === id);
+/** The places one trip uses: where it starts, its stop, and where it goes after (or null). */
+function legOf(trip) {
+  const ps = settings.places;
+  return {
+    from: placeById(trip.from) ?? ps[0],
+    to: placeById(trip.to) ?? ps[1] ?? ps[0],
+    then: trip.then ? placeById(trip.then) ?? null : null,
+  };
+}
+const routeKey = (a, b) => `${a.at}>${b.at}`;
+const savedRoute = (a, b) => (settings.routes?.[routeKey(a, b)] ? decodePolyline(settings.routes[routeKey(a, b)]) : null);
+function rememberRoute(a, b, polyline) { settings.routes = { ...settings.routes, [routeKey(a, b)]: polyline }; }
+/** Minutes a stop takes before driving on (getting a child in the car). */
+const STOP_MIN = 5;
 
 // ---- the trips ahead ----
 /** The next n school trips from now: [{ day, trip, arriveBy: Date }]. */
@@ -39,7 +74,7 @@ function upcoming(s, n, now = new Date()) {
   // One-off trips (a weekend school event, an early pick-up) on their own day.
   for (const x of s.extras ?? []) {
     const arriveBy = sfTime(x.day, x.time);
-    if (arriveBy > now && x.day <= addDays(today, 21)) out.push({ day: x.day, trip: { id: x.id, label: x.label, time: x.time, extra: true }, arriveBy, skipped: false });
+    if (arriveBy > now && x.day <= addDays(today, 21)) out.push({ day: x.day, trip: { id: x.id, label: x.label, time: x.time, from: x.from, to: x.to, then: x.then, extra: true }, arriveBy, skipped: false });
   }
   return out.sort((a, b) => a.arriveBy - b.arriveBy).slice(0, n);
 }
@@ -61,25 +96,40 @@ function eventsFor(day) {
   return p;
 }
 
-/** The leave-by plan for one trip, reused for 5 minutes so reopening the app doesn't cost a lookup. */
 /** Minutes for a bad-day drive on this trip, from the last time it was planned. */
 const badDay = (trip) => settings.badDay?.[trip.id] ?? settings.lastBadDayMin ?? 20;
-const planId = (t, s) => [t.day, t.trip.time, s.from.at, s.to.at, s.buffer].join('|');
+const homeBadDay = (trip) => settings.homeBadDay?.[trip.id] ?? badDay(trip);
+const planId = (t, s) => { const l = legOf(t.trip); return [t.day, t.trip.time, l.from.at, l.to.at, s.buffer].join('|'); };
+
+/** The leave-by plan for one trip, reused for 5 minutes so reopening the app doesn't cost a lookup. */
 async function planFor(t, force) {
   const id = planId(t, settings);
+  const { from, to } = legOf(t.trip);
   const saved = store.get(PLAN_KEY);
-  if (!force && saved?.id === id && Date.now() - saved.at < 5 * MIN) {
-    settings.lastRoute ??= saved.plan.polyline; settings.lastBadDayMin ??= saved.plan.badDayMin;
-    settings.badDay = { ...settings.badDay, [t.trip.id]: saved.plan.badDayMin };
-    return saved.plan;
-  }
-  const plan = await api('/api/plan', { from: settings.from.at, to: settings.to.at, arriveBy: t.arriveBy.toISOString(), bufferMin: settings.buffer });
+  if (!force && saved?.id === id && Date.now() - saved.at < 5 * MIN) return saved.plan;
+  const plan = await api('/api/plan', { from: from.at, to: to.at, arriveBy: t.arriveBy.toISOString(), bufferMin: settings.buffer });
   // The places may have changed while this was on its way: then it's stale.
   if (planId(t, settings) !== id) throw Object.assign(new Error('stale'), { stale: true });
   store.set(PLAN_KEY, { id, at: Date.now(), plan });
   // Remember the route and a typical bad-day time for the days ahead.
-  settings.lastRoute = plan.polyline; settings.lastBadDayMin = plan.badDayMin;
+  rememberRoute(from, to, plan.polyline);
+  settings.lastBadDayMin = plan.badDayMin;
   settings.badDay = { ...settings.badDay, [t.trip.id]: plan.badDayMin };
+  store.set(KEY, settings);
+  return plan;
+}
+
+/** The drive onward after the stop (home after pick-up), leaving a few minutes after arriving. */
+async function homeFor(t) {
+  const { to, then } = legOf(t.trip);
+  if (!then) return null;
+  const id = ['home', t.day, t.trip.time, to.at, then.at].join('|');
+  const saved = store.get(HOME_KEY);
+  if (saved?.id === id && Date.now() - saved.at < 5 * MIN) return saved.plan;
+  const plan = await api('/api/plan', { from: to.at, to: then.at, departAt: new Date(t.arriveBy.getTime() + STOP_MIN * MIN).toISOString() });
+  store.set(HOME_KEY, { id, at: Date.now(), plan });
+  rememberRoute(to, then, plan.polyline);
+  settings.homeBadDay = { ...settings.homeBadDay, [t.trip.id]: plan.badDayMin };
   store.set(KEY, settings);
   return plan;
 }
@@ -90,43 +140,98 @@ function renderSetup(existing) {
   document.getElementById('open-settings').hidden = true;
   app.replaceChildren(document.getElementById('tpl-setup').content.cloneNode(true));
   const form = $('#setup-form');
-  const chosen = { from: existing?.from ?? null, to: existing?.to ?? null };
   const msg = $('#setup-msg');
 
-  for (const fs of form.querySelectorAll('.place')) {
-    const which = fs.dataset.place;
-    const q = fs.querySelector('[name=q]'), name = fs.querySelector('[name=name]'), list = fs.querySelector('.matches');
-    if (existing) { q.value = existing[which].label; name.value = existing[which].name; showMatches([existing[which]], 0); }
-    async function find() {
+  // Your places: Home and School to begin with; add more when trips differ.
+  let places = existing?.places?.map((p) => ({ ...p })) ?? [
+    { id: 'home', name: 'Home', label: '', at: null },
+    { id: 'school', name: 'School', label: '', at: null },
+  ];
+  const placesBox = $('#places');
+  const PLACEHOLDER = { home: 'Street address', school: 'School name or address' };
+
+  function placeBlock(p) {
+    const box = el('div', 'place-block');
+    const head = el('div', 'head');
+    const nameIn = Object.assign(document.createElement('input'), { value: p.name, className: 'short', ariaLabel: 'Name for this place', placeholder: 'Name, e.g. After-care' });
+    head.append(nameIn);
+    if (places.length > 2 && p.id !== 'home' && p.id !== 'school') {
+      const rm = el('button', 'ghost', 'Remove'); rm.type = 'button';
+      rm.addEventListener('click', () => { places = places.filter((x) => x !== p); drawPlaces(); });
+      head.append(rm);
+    }
+    const row = el('div', 'row');
+    const q = Object.assign(document.createElement('input'), { value: p.label, placeholder: PLACEHOLDER[p.id] ?? 'Address', ariaLabel: `${p.name || 'Place'} address` });
+    const find = el('button', 'find', 'Find'); find.type = 'button';
+    row.append(q);
+    const list = el('div', 'matches');
+    list.setAttribute('role', 'radiogroup');
+    const show = (results, pick) => {
+      list.replaceChildren(...results.map((r, i) => {
+        const lab = el('label');
+        const radio = Object.assign(document.createElement('input'), { type: 'radio', name: `pick-${p.id}`, checked: i === pick });
+        radio.addEventListener('change', () => { p.label = r.label; p.at = r.at; });
+        lab.append(radio, el('span', null, r.label));
+        return lab;
+      }));
+      if (pick >= 0) { p.label = results[pick].label; p.at = results[pick].at; }
+    };
+    if (p.at) show([{ label: p.label, at: p.at }], 0);
+    const lookup = async () => {
       msg.textContent = '';
       list.replaceChildren(el('p', 'ev-m', 'Looking…'));
       try {
         const { results } = await api('/api/geocode', { q: q.value });
-        if (!results.length) { list.replaceChildren(el('p', 'ev-m', 'No Bay Area match. Try adding the street number or "San Francisco".')); chosen[which] = null; return; }
-        showMatches(results, results.length === 1 ? 0 : -1);
+        if (!results.length) { list.replaceChildren(el('p', 'ev-m', 'No Bay Area match. Try adding the street number or "San Francisco".')); p.at = null; return; }
+        show(results, results.length === 1 ? 0 : -1);
       } catch (e) { list.replaceChildren(el('p', 'msg', e.message)); }
-    }
-    function showMatches(results, pick) {
-      list.replaceChildren(...results.map((r, i) => {
-        const lab = el('label');
-        const radio = Object.assign(document.createElement('input'), { type: 'radio', name: `${which}-pick`, checked: i === pick });
-        radio.addEventListener('change', () => { chosen[which] = { label: r.label, at: r.at }; });
-        lab.append(radio, el('span', null, r.label));
-        return lab;
-      }));
-      chosen[which] = pick >= 0 ? { label: results[pick].label, at: results[pick].at } : null;
-    }
-    fs.querySelector('.find').addEventListener('click', find);
-    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); find(); } });
-    q.addEventListener('input', () => { chosen[which] = null; list.replaceChildren(); });
+    };
+    find.addEventListener('click', lookup);
+    q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); lookup(); } });
+    q.addEventListener('input', () => { p.at = null; list.replaceChildren(); });
+    nameIn.addEventListener('input', () => { p.name = nameIn.value; fillSelects(); });
+    box.append(head, row, find, list);
+    return box;
   }
+
+  // Each trip's From → To, then (optionally) where it drives on to.
+  const legSelects = ['drop', 'pick', 'x'].map((t) => ({ t, from: form.elements[`${t}-from`], to: form.elements[`${t}-to`], then: form.elements[`${t}-then`] }));
+  const tripDefaults = Object.fromEntries((existing?.trips ?? []).map((t) => [t.id, t]));
+  const want = {
+    drop: { from: tripDefaults.drop?.from ?? 'home', to: tripDefaults.drop?.to ?? 'school', then: tripDefaults.drop?.then ?? '' },
+    pick: { from: tripDefaults.pick?.from ?? 'home', to: tripDefaults.pick?.to ?? 'school', then: tripDefaults.pick?.then ?? 'home' },
+    x: { from: 'home', to: 'school', then: '' },
+  };
+  function fillSelects() {
+    for (const { t, from, to, then } of legSelects) {
+      for (const [sel, key, none] of [[from, 'from'], [to, 'to'], [then, 'then', 'Nowhere (don’t check)']]) {
+        const keep = sel.options.length ? sel.value : want[t][key];
+        const opts = places.map((p) => Object.assign(document.createElement('option'), { value: p.id, textContent: p.name || 'Unnamed place' }));
+        if (none) opts.unshift(Object.assign(document.createElement('option'), { value: '', textContent: none }));
+        sel.replaceChildren(...opts);
+        sel.value = [...sel.options].some((o) => o.value === keep) ? keep : (none ? '' : places[key === 'from' ? 0 : Math.min(1, places.length - 1)].id);
+      }
+    }
+  }
+  function drawPlaces() {
+    placesBox.replaceChildren(...places.map(placeBlock));
+    fillSelects();
+  }
+  $('#add-place').addEventListener('click', () => {
+    places.push({ id: `p${Date.now()}`, name: '', label: '', at: null });
+    drawPlaces();
+    placesBox.lastElementChild?.querySelector('input')?.focus();
+  });
+  drawPlaces();
 
   // one-off trips
   let extras = [...(existing?.extras ?? [])].filter((x) => x.day >= sfDate());
   const xList = $('#extras');
+  const nameOf = (id) => places.find((p) => p.id === id)?.name ?? '';
   const drawExtras = () => xList.replaceChildren(...extras.sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time)).map((x) => {
     const li = el('li', null);
-    li.append(el('span', null, `${dayLabel(x.day)} · ${clock(sfTime(x.day, x.time))} · ${x.label}`));
+    const legs = [nameOf(x.from), nameOf(x.to)].filter(Boolean).join(' → ') + (x.then ? `, then ${nameOf(x.then)}` : '');
+    li.append(el('span', null, `${dayLabel(x.day)} · ${clock(sfTime(x.day, x.time))} · ${x.label}${legs ? ` · ${legs}` : ''}`));
     const rm = el('button', 'skipbtn', 'Remove'); rm.type = 'button';
     rm.addEventListener('click', () => { extras = extras.filter((y) => y !== x); drawExtras(); });
     li.append(rm);
@@ -137,7 +242,7 @@ function renderSetup(existing) {
     const day = form.elements['x-date'].value, time = form.elements['x-time'].value, label = form.elements['x-label'].value.trim() || 'School event';
     if (!day || !time || day < sfDate()) { msg.textContent = 'Pick a date from today on and a time for the one-off trip.'; return; }
     msg.textContent = '';
-    extras.push({ id: `x${Date.now()}`, day, time, label: label.slice(0, 40) });
+    extras.push({ id: `x${Date.now()}`, day, time, label: label.slice(0, 40), from: form.elements['x-from'].value, to: form.elements['x-to'].value, then: form.elements['x-then'].value });
     form.elements['x-label'].value = '';
     drawExtras();
   });
@@ -152,23 +257,27 @@ function renderSetup(existing) {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!chosen.from || !chosen.to) { msg.textContent = 'Tap Find for both places, then pick the right address.'; return; }
-    const trips = [
-      { id: 'drop', label: 'Drop-off', time: form.elements.drop.value || '08:00', on: form.elements['drop-on'].checked },
-      { id: 'pick', label: 'Pick-up', time: form.elements.pick.value || '15:00', on: form.elements['pick-on'].checked },
-    ];
+    const missing = places.find((p) => !p.at);
+    if (missing) { msg.textContent = `Tap Find for ${missing.name || 'each place'} and pick the right address (or remove places you don't need).`; return; }
+    const trip = (id, label, fallback) => ({
+      id, label, time: form.elements[id].value || fallback, on: form.elements[`${id}-on`].checked,
+      from: form.elements[`${id}-from`].value, to: form.elements[`${id}-to`].value, then: form.elements[`${id}-then`].value,
+    });
+    const trips = [trip('drop', 'Drop-off', '08:00'), trip('pick', 'Pick-up', '15:00')];
+    if (trips.some((t) => t.on && t.from === t.to)) { msg.textContent = 'A trip starts and ends at the same place. Pick a different From or To.'; return; }
     const days = [...form.querySelectorAll('[name=day]:checked')].map((b) => +b.value);
     if ((!trips.some((t) => t.on) || !days.length) && !extras.length) { msg.textContent = 'Choose at least one trip and one school day, or add a one-off trip.'; return; }
-    const moved = !existing || existing.from.at.join() !== chosen.from.at.join() || existing.to.at.join() !== chosen.to.at.join();
+    const ids = new Set(places.map((p) => p.id));
     settings = {
-      from: { ...chosen.from, name: form.querySelector('[data-place=from] [name=name]').value.trim() || 'Home' },
-      to: { ...chosen.to, name: form.querySelector('[data-place=to] [name=name]').value.trim() || 'School' },
-      trips, days, extras, buffer: +form.querySelector('[name=buffer]:checked').value,
+      places: places.map((p, i) => ({ ...p, name: p.name.trim() || ['Home', 'School'][i] || `Place ${i + 1}` })),
+      trips, days, buffer: +form.querySelector('[name=buffer]:checked').value,
+      extras: extras.map((x) => ({ ...x, from: ids.has(x.from) ? x.from : 'home', to: ids.has(x.to) ? x.to : 'school', then: ids.has(x.then) ? x.then : '' })),
       skip: (existing?.skip ?? []).filter((d) => d >= sfDate()),
-      lastRoute: moved ? null : existing?.lastRoute, lastBadDayMin: moved ? null : existing?.lastBadDayMin, badDay: moved ? {} : existing?.badDay ?? {},
+      // Routes are keyed by their two points, so moved places simply miss.
+      routes: existing?.routes ?? {}, badDay: existing?.badDay ?? {}, homeBadDay: existing?.homeBadDay ?? {}, lastBadDayMin: existing?.lastBadDayMin,
     };
     if (!store.set(KEY, settings)) msg.textContent = "This browser won't save settings (private mode?), so you'll need to enter them again next time.";
-    try { localStorage.removeItem(PLAN_KEY); } catch {}
+    try { localStorage.removeItem(PLAN_KEY); localStorage.removeItem(HOME_KEY); } catch {}
     renderTrip();
   });
 }
@@ -185,12 +294,25 @@ function span(w) {
   return `${clock(a)}–${clock(b)}`;
 }
 
+/** 'On your route', 'Nearby', 'On the way home', 'In SF'. */
+function tagText(e) {
+  if (e.level === 'city') return 'In SF';
+  if (e.leg === 'then') return e.level === 'on' ? `On the way to ${e.legName}` : `Near the way to ${e.legName}`;
+  return e.level === 'on' ? 'On your route' : 'Nearby';
+}
+
+/** Events for the drive onward, tagged, minus any already listed for the main drive. */
+function withOnward(main, onward, name) {
+  const seen = new Set(main.map((e) => e.id));
+  return [...main, ...onward.filter((e) => e.level !== 'city' && !seen.has(e.id)).map((e) => ({ ...e, leg: 'then', legName: name }))];
+}
+
 function eventItem(e) {
   const li = el('li', e.level);
   li.append(el('div', 'ico', ICON[e.kind] || '📍'));
   const body = el('div');
   const t = el('div', 'ev-t');
-  t.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(' ' + e.title));
+  t.append(el('span', 'tag', tagText(e)), document.createTextNode(' ' + e.title));
   const where = e.venue && !(e.where ?? '').startsWith(e.venue) ? [e.venue, e.where].filter(Boolean).join(' · ') : e.where;
   const meta = el('div', 'ev-m', `${e.window.label} ${span(e.window)}${where ? ' · ' + where : ''}`);
   body.append(t, meta);
@@ -200,7 +322,7 @@ function eventItem(e) {
   return li;
 }
 
-function drawMap(route, assessed) {
+function drawMap(route, assessed, leg, homeRoute) {
   if (!window.L) return;
   if (!map) {
     map = L.map('map', { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
@@ -221,10 +343,13 @@ function drawMap(route, assessed) {
     else if (e.geom.type === 'LineString') L.polyline(e.geom.coordinates.map(([x, y]) => [y, x]), style).bindTooltip(e.title).addTo(layers);
     else if (e.geom.type === 'MultiLineString') L.polyline(e.geom.coordinates.map((l) => l.map(([x, y]) => [y, x])), style).bindTooltip(e.title).addTo(layers);
   }
+  if (homeRoute?.length) L.polyline(homeRoute, { color: '#7a4a24', weight: 4, opacity: 0.75, dashArray: '8 7' }).addTo(layers);
   if (route?.length) L.polyline(route, { color: '#3a2616', weight: 5, opacity: 0.85 }).addTo(layers);
-  L.circleMarker(settings.from.at, { radius: 8, color: '#fffaf0', weight: 3, fillColor: '#3a2616', fillOpacity: 1 }).bindTooltip(settings.from.name).addTo(layers);
-  L.circleMarker(settings.to.at, { radius: 9, color: '#3a2616', weight: 3, fillColor: '#e5a630', fillOpacity: 1 }).bindTooltip(settings.to.name).addTo(layers);
-  map.fitBounds(L.latLngBounds(route?.length ? route : [settings.from.at, settings.to.at]), { padding: [24, 24] });
+  L.circleMarker(leg.from.at, { radius: 8, color: '#fffaf0', weight: 3, fillColor: '#3a2616', fillOpacity: 1 }).bindTooltip(leg.from.name).addTo(layers);
+  if (leg.then && leg.then.id !== leg.from.id) L.circleMarker(leg.then.at, { radius: 8, color: '#fffaf0', weight: 3, fillColor: '#7a4a24', fillOpacity: 1 }).bindTooltip(leg.then.name).addTo(layers);
+  L.circleMarker(leg.to.at, { radius: 9, color: '#3a2616', weight: 3, fillColor: '#e5a630', fillOpacity: 1 }).bindTooltip(leg.to.name).addTo(layers);
+  const pts = [...(route ?? []), ...(homeRoute ?? [])];
+  map.fitBounds(L.latLngBounds(pts.length ? pts : [leg.from.at, leg.to.at]), { padding: [24, 24] });
 }
 
 /** A few words for the status line: 'Game at Chase Center', 'Street closed on Oak St'. */
@@ -258,21 +383,29 @@ async function renderTrip() {
   const next = upcoming(settings, 8).filter((t) => !t.skipped);
   if (!next.length) { $('#hero .door').replaceChildren(el('p', 'empty', 'No school trips in the next three weeks. Check the school days in Settings.')); return; }
   const t = next[0];
+  const leg = legOf(t.trip);
   $('#t-when').textContent = whenLabel(t);
-  $('#t-dest').textContent = `to be at ${settings.to.name} by ${clock(t.arriveBy)}`;
+  $('#t-dest').textContent = `to be at ${leg.to.name} by ${clock(t.arriveBy)}`;
   const v = $('#t-verdict'); v.className = 'verdict loading'; v.textContent = 'Checking traffic and events…';
 
-  let plan = null, planErr = null, evs = null, evErr = null;
+  let plan = null, planErr = null, evs = null, evErr = null, home = null;
   const draw = () => {
     if (gen !== view) return;
-    const route = plan?.polyline ? decodePolyline(plan.polyline) : settings.lastRoute ? decodePolyline(settings.lastRoute) : null;
+    const route = plan?.polyline ? decodePolyline(plan.polyline) : savedRoute(leg.from, leg.to);
     const leaveBy = plan ? new Date(plan.leaveBy) : new Date(t.arriveBy - (settings.buffer + badDay(t.trip)) * MIN);
-    const assessed = evs ? assess(evs.events, { leaveBy, arriveBy: t.arriveBy }, route) : [];
-    const level = verdict(assessed);
+    const mainAssessed = evs ? assess(evs.events, { leaveBy, arriveBy: t.arriveBy }, route) : [];
+    // The drive onward (home after pick-up): its own route and time window.
+    const homeRoute = !leg.then ? null : home?.polyline ? decodePolyline(home.polyline) : savedRoute(leg.to, leg.then);
+    const homeStart = new Date(t.arriveBy.getTime() + STOP_MIN * MIN);
+    const homeEnd = home ? new Date(home.arriveBadDay) : new Date(homeStart.getTime() + homeBadDay(t.trip) * MIN);
+    const homeAssessed = leg.then && evs && homeRoute ? assess(evs.events, { leaveBy: homeStart, arriveBy: homeEnd }, homeRoute) : [];
+    const assessed = leg.then ? withOnward(mainAssessed, homeAssessed, leg.then.name) : mainAssessed;
+    const homeLevel = verdict(homeAssessed.filter((e) => e.level !== 'city'));
+    const level = verdict(mainAssessed);
     const hero = $('#hero'), now = Date.now();
     hero.classList.remove('now', 'late');
     if (plan) {
-      const extra = extraMinutes(assessed);
+      const extra = extraMinutes(mainAssessed);
       const safeLeave = new Date(leaveBy - extra * MIN);
       if (now < leaveBy) {
         $('#t-label').textContent = 'Leave by';
@@ -292,7 +425,8 @@ async function renderTrip() {
       math.replaceChildren();
       math.append(document.createTextNode('Bad-day drive '), el('b', null, `${plan.badDayMin} min`), document.createTextNode(` · usually ${plan.usualMin} · plus your ${plan.bufferMin} min`));
       if (extra && now < safeLeave) math.append(el('div', null, `Includes ${extra} extra min for what's on your route (${clock(leaveBy)} otherwise).`));
-      $('#t-via').textContent = `${plan.miles} mi${plan.via ? ` via ${plan.via}` : ''} · ${settings.from.name} → ${settings.to.name}`;
+      if (leg.then && home) math.append(el('div', 'then-line', `Then ${leg.then.name}: about ${clock(new Date(home.arriveUsual))} (by ${clock(new Date(home.arriveBadDay))} on a bad day)`));
+      $('#t-via').textContent = `${plan.miles} mi${plan.via ? ` via ${plan.via}` : ''} · ${leg.from.name} → ${leg.to.name}${leg.then ? ` → ${leg.then.name}` : ''}`;
     } else if (planErr) {
       $('#t-leave').textContent = '—';
       $('#t-count').textContent = '';
@@ -300,11 +434,15 @@ async function renderTrip() {
     }
     if (evs || evErr) {
       const onWay = assessed.filter((e) => e.level !== 'city'), city = assessed.filter((e) => e.level === 'city');
-      v.className = `verdict ${level}`;
+      const mainOn = mainAssessed.filter((e) => e.level !== 'city');
+      const shown = level === 'clear' && homeLevel !== 'clear' ? homeLevel : level;
+      v.className = `verdict ${shown}`;
       v.textContent = evErr && !evs ? "Couldn't check events right now"
-        : level === 'clear' ? (route ? 'Nothing unusual on your route' : 'No big events in SF around then')
-        : level === 'heads-up' ? `${onWay.length} thing${onWay.length > 1 ? 's' : ''} near your route`
-        : `${short(assessed.find((e) => e.level === 'on'))} on your route`;
+        : level === 'watch' ? `${short(mainAssessed.find((e) => e.level === 'on'))} on your route`
+        : level === 'heads-up' ? `${mainOn.length} thing${mainOn.length > 1 ? 's' : ''} near your route`
+        : homeLevel === 'watch' ? `${short(homeAssessed.find((e) => e.level === 'on'))} on the way to ${leg.then.name}`
+        : homeLevel === 'heads-up' ? `Something near the way to ${leg.then.name}`
+        : route ? `Nothing unusual on your route${leg.then ? 's' : ''}` : 'No big events in SF around then';
       const list = $('#t-events');
       list.replaceChildren(...onWay.map(eventItem));
       if (!onWay.length) { const p = el('p', 'empty'); p.append(el('b', null, 'All clear. '), document.createTextNode(route ? 'No games, concerts, closures or incidents along your way at that time.' : 'Add the route to check your streets.')); list.append(p); }
@@ -313,18 +451,19 @@ async function renderTrip() {
       const off = Object.entries(evs?.sources ?? {}).filter(([, s]) => s !== 'ok').map(([k]) => k);
       $('#t-updated').textContent = `Updated ${clock(new Date())}${off.length ? ` · couldn't reach: ${off.join(', ')}` : ''}`;
     }
-    drawMap(route, assessed);
+    drawMap(route, assessed, leg, homeRoute);
   };
 
   const loadPlan = (force) => planFor(t, force).then((p) => { plan = p; planErr = null; }).catch((e) => { if (!e.stale) planErr = e.message; }).finally(draw);
   const loadEvents = () => eventsFor(t.day).then((d) => { evs = d; evErr = null; }).catch((e) => { evErr = e.message; }).finally(draw);
-  await Promise.all([loadPlan(false), loadEvents()]);
+  const loadHome = () => (leg.then ? homeFor(t).then((h) => { home = h; }).catch(() => {}).finally(draw) : Promise.resolve());
+  await Promise.all([loadPlan(false), loadEvents(), loadHome()]);
   if (gen === view) renderWeek(t);
 
   // Keep the countdown live; refresh the drive time every 5 minutes when the trip is
   // within three hours, and events every 10.
   timers.push(setInterval(draw, 20e3));
-  timers.push(setInterval(() => { if (t.arriveBy - Date.now() < 3 * 3600e3) loadPlan(true); }, 5 * MIN));
+  timers.push(setInterval(() => { if (t.arriveBy - Date.now() < 3 * 3600e3) { loadPlan(true); loadHome(); } }, 5 * MIN));
   timers.push(setInterval(() => { eventCache.delete(t.day); loadEvents(); }, 10 * MIN));
   timers.push(setInterval(() => { if (Date.now() > t.arriveBy.getTime() + 15 * MIN) renderTrip(); }, MIN));
 }
@@ -333,7 +472,6 @@ function renderWeek(hero) {
   const ul = $('#t-week');
   const all = upcoming(settings, 8).filter((x) => !(x.day === hero.day && x.trip.id === hero.trip.id)).slice(0, 6);
   if (!all.length) { ul.replaceChildren(el('p', 'empty', 'Nothing else scheduled.')); return; }
-  const route = settings.lastRoute ? decodePolyline(settings.lastRoute) : null;
   // One day at a time: Ticketmaster allows only a few requests a second.
   let queue = Promise.resolve();
   const rows = all.map((t) => {
@@ -343,13 +481,19 @@ function renderWeek(hero) {
     d.append(el('small', null, t.day === addDays(sfDate(), 1) ? 'Tomorrow' : dayLabel(t.day).replace(/^\w+, /, '')));
     const dot = el('span', `dot ${t.skipped ? 'skip' : ''}`);
     const w = el('div', 'w');
+    const leg = legOf(t.trip);
+    const route = savedRoute(leg.from, leg.to);
+    const homeRoute = leg.then ? savedRoute(leg.to, leg.then) : null;
     const mins = badDay(t.trip);
     const leave = new Date(t.arriveBy - (settings.buffer + mins) * MIN);
+    const homeStart = new Date(t.arriveBy.getTime() + STOP_MIN * MIN);
+    const homeEnd = new Date(homeStart.getTime() + homeBadDay(t.trip) * MIN);
     let extra = 0;
     const leaveText = () => `Leave by ${clock(new Date(leave - extra * MIN))}`;
     const head = el('div');
     const leaveLine = el('div', 'ev-m', t.skipped ? 'No school' : leaveText());
     head.append(el('b', null, `${t.trip.label} ${clock(t.arriveBy)}`), leaveLine);
+    if (!t.skipped && (leg.then || leg.from.id !== settings.places[0].id || leg.to.id !== settings.places[1]?.id)) head.append(el('div', 'ev-m', `${leg.from.name} → ${leg.to.name}${leg.then ? ` → ${leg.then.name}` : ''}`));
     const sub = el('div', 'ev-m', t.skipped ? '' : 'Checking events…');
     w.append(head, sub);
     const btn = el('button', 'skipbtn', t.trip.extra ? 'Remove' : t.skipped ? 'Undo' : 'Skip');
@@ -366,13 +510,14 @@ function renderWeek(hero) {
     const fill = () => {
       more.replaceChildren();
       if (t.skipped) { more.append(el('p', null, 'Marked as no school. Tap Undo to bring this trip back.')); return; }
-      more.append(el('p', null, `${leaveText()} to be at ${settings.to.name} by ${clock(t.arriveBy)}: about ${mins} min on a bad day, plus your ${settings.buffer} min${extra ? `, plus ${extra} min for what's on your route` : ''}.`));
+      more.append(el('p', null, `${leaveText()} from ${leg.from.name} to be at ${leg.to.name} by ${clock(t.arriveBy)}: about ${mins} min on a bad day, plus your ${settings.buffer} min${extra ? `, plus ${extra} min for what's on your route` : ''}.`));
+      if (leg.then) more.append(el('p', null, `Then on to ${leg.then.name}, getting there by about ${clock(homeEnd)} on a bad day.`));
       if (!found) { more.append(el('p', 'ev-m', 'Checking events…')); return; }
       if (!found.length) more.append(el('p', null, 'Nothing unusual: no games, concerts, conventions or street closures along your way around then.'));
       for (const e of found) {
         const where = e.venue && !(e.where ?? '').startsWith(e.venue) ? [e.venue, e.where].filter(Boolean).join(' · ') : e.where;
         const p1 = el('p', `ev ${e.level}`);
-        p1.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(' ' + e.title));
+        p1.append(el('span', 'tag', tagText(e)), document.createTextNode(' ' + e.title));
         more.append(p1, el('p', 'ev-m', [`${e.window.label} ${span(e.window)}`, where, e.note].filter(Boolean).join(' · ')));
       }
       if (extra) more.append(el('p', null, found.some((e) => e.level === 'on' && e.reach !== 'closure')
@@ -393,14 +538,16 @@ function renderWeek(hero) {
     w.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     li.append(d, dot, w, btn, more);
     if (!t.skipped) queue = queue.then(() => eventsFor(t.day)).then((ev) => {
-      const a = assess(ev.events, { leaveBy: leave, arriveBy: t.arriveBy }, route);
+      const main = assess(ev.events, { leaveBy: leave, arriveBy: t.arriveBy }, route);
+      const onward = homeRoute ? assess(ev.events, { leaveBy: homeStart, arriveBy: homeEnd }, homeRoute) : [];
+      const a = leg.then ? withOnward(main, onward, leg.then.name) : main;
       found = a;
-      extra = extraMinutes(a);
+      extra = extraMinutes(main);
       leaveLine.textContent = leaveText();
       const lv = verdict(a);
       dot.className = `dot ${lv}`;
       const top = a.find((e) => e.level !== 'city') || a[0];
-      sub.textContent = top ? `${top.level === 'on' ? 'On your route' : top.level === 'near' ? 'Nearby' : 'In SF'}: ${top.title}${a.length > 1 ? ` +${a.length - 1}` : ''}` : 'Nothing unusual';
+      sub.textContent = top ? `${tagText(top)}: ${top.title}${a.length > 1 ? ` +${a.length - 1}` : ''}` : 'Nothing unusual';
       if (!more.hidden) fill();
     }).catch(() => { sub.textContent = "Couldn't check events"; });
     return li;
@@ -409,4 +556,4 @@ function renderWeek(hero) {
 }
 
 document.getElementById('open-settings').addEventListener('click', () => renderSetup(settings));
-if (settings?.from?.at && settings?.to?.at) { settings.skip ??= []; settings.extras = (settings.extras ?? []).filter((x) => x.day >= sfDate()); renderTrip(); } else renderSetup(null);
+if (settings?.places?.length >= 2 && settings.places.every((p) => p.at)) { settings.skip ??= []; store.set(KEY, settings); settings.extras = (settings.extras ?? []).filter((x) => x.day >= sfDate()); renderTrip(); } else renderSetup(null);

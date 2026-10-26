@@ -68,24 +68,22 @@
   <section class="card setup">
     <img class="art" src="/art/pickup.jpg" alt="Cartoon parents wave from their cars as they pull up to the school, where kids and grown-ups wave back" width="1280" height="600">
     <h1>Leave on time, every time</h1>
-    <p class="lede">Tell it where you start and where school is. It plans each drive for a bad-traffic day and checks San Francisco's games, concerts and street closures along your way.</p>
+    <p class="lede">Tell it where you start and where you're going. It plans each drive for a bad-traffic day and checks San Francisco's games, concerts and street closures along your way.</p>
     <form id="setup-form" autocomplete="off">
-      <fieldset class="place" data-place="from">
-        <legend>Where you start</legend>
-        <div class="row"><input name="name" value="Home" aria-label="Name for this place" class="short"><input name="q" placeholder="Street address" aria-label="Start address" required></div>
-        <button type="button" class="find">Find</button>
-        <div class="matches" role="radiogroup" aria-label="Matching addresses"></div>
-      </fieldset>
-      <fieldset class="place" data-place="to">
-        <legend>School</legend>
-        <div class="row"><input name="name" value="School" aria-label="Name for this place" class="short"><input name="q" placeholder="School name or address" aria-label="School address" required></div>
-        <button type="button" class="find">Find</button>
-        <div class="matches" role="radiogroup" aria-label="Matching addresses"></div>
+      <fieldset class="places-set">
+        <legend>Your places</legend>
+        <p class="hint">Where you start and where you go. Add more if drop-off and pick-up differ, like after-school care or work.</p>
+        <div id="places"></div>
+        <button type="button" class="find" id="add-place">+ Add a place</button>
       </fieldset>
       <fieldset>
         <legend>Be there by</legend>
         <label class="trip"><input type="checkbox" name="drop-on" checked> Drop-off <input type="time" name="drop" value="08:00" aria-label="Drop-off time"></label>
+        <div class="legs"><select name="drop-from" aria-label="Drop-off from"></select><span>→</span><select name="drop-to" aria-label="Drop-off to"></select></div>
+        <div class="legs then"><span>then</span><select name="drop-then" aria-label="After drop-off, drive to"></select></div>
         <label class="trip"><input type="checkbox" name="pick-on" checked> Pick-up <input type="time" name="pick" value="15:00" aria-label="Pick-up time"></label>
+        <div class="legs"><select name="pick-from" aria-label="Pick-up from"></select><span>→</span><select name="pick-to" aria-label="Pick-up to"></select></div>
+        <div class="legs then"><span>then</span><select name="pick-then" aria-label="After pick-up, drive to"></select></div>
       </fieldset>
       <fieldset>
         <legend>School days</legend>
@@ -107,6 +105,8 @@
           <input type="date" name="x-date" aria-label="Date">
           <input type="time" name="x-time" value="10:00" aria-label="Be there by">
         </div>
+        <div class="legs extra-add"><select name="x-from" aria-label="One-off trip from"></select><span>→</span><select name="x-to" aria-label="One-off trip to"></select></div>
+        <div class="legs then extra-add"><span>then</span><select name="x-then" aria-label="After the one-off trip, drive to"></select></div>
         <div class="row extra-add"><input name="x-label" placeholder="What is it? e.g. Science fair" aria-label="What is it"><button type="button" class="find" id="x-add">Add</button></div>
       </fieldset>
       <fieldset>

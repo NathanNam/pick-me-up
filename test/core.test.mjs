@@ -97,3 +97,13 @@ test('extra minutes: 10 for a crowd on the route, 5 for a closed street, 0 other
   assert.equal(extraMinutes([{ level: 'on', reach: 'closure' }]), 5);
   assert.equal(extraMinutes([{ level: 'near', reach: 'venue' }, { level: 'city', reach: 'venue' }]), 0);
 });
+
+test('the drive home: when you would get there, leaving at a given time', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (url, init) => new Response(JSON.stringify({ routes: [{ duration: JSON.parse(init.body).trafficModel === 'PESSIMISTIC' ? '1500s' : '960s', staticDuration: '660s', distanceMeters: 6437, polyline: { encodedPolyline: 'abc' } }] })));
+  const now = Date.parse('2026-10-26T20:00:00Z');
+  const r = await plan({ from: [37.79, -122.42], to: [37.76, -122.44], departAt: '2026-10-26T22:45:00Z' }, 'k', now);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.arriveUsual, '2026-10-26T23:01:00.000Z');
+  assert.equal(r.body.arriveBadDay, '2026-10-26T23:10:00.000Z');
+  assert.equal(r.body.badDayMin, 25);
+});

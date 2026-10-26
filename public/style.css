@@ -196,3 +196,16 @@ h2 { text-transform:none; letter-spacing:0; font-size:22px; color:#5a3417; font-
 .week .more .ev { font-weight: 800; }
 .week .more .tag { line-height: 18px; padding: 0 6px; font-size: 11px; vertical-align: 1px; }
 @media (max-width: 420px) { .week .more { margin-left: 0; } }
+
+/* places and per-trip legs */
+.place-block { border: 1.5px solid var(--line); border-radius: 14px; padding: 10px; margin-bottom: 10px; background: #fffdf8; }
+.place-block .row { display: flex; gap: 8px; }
+.place-block .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.place-block .head .ghost { padding: 2px 4px; font-size: 14px; }
+.legs { display: flex; align-items: center; gap: 8px; margin: 2px 0 12px 30px; color: var(--mute); font-weight: 700; }
+.legs select { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 7px 8px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+.legs.extra-add { margin-left: 0; }
+.legs.then { margin-top: -6px; font-weight: 600; font-size: 14px; }
+.legs.then select { flex: 0 1 60%; }
+
+.then-line { margin-top: 6px; color: var(--ink); font-weight: 700; }
