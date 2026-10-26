@@ -60,7 +60,10 @@ function eventsFor(day) {
 async function planFor(t, force) {
   const id = [t.day, t.trip.time, settings.from.at, settings.to.at, settings.buffer].join('|');
   const saved = store.get(PLAN_KEY);
-  if (!force && saved?.id === id && Date.now() - saved.at < 5 * MIN) return saved.plan;
+  if (!force && saved?.id === id && Date.now() - saved.at < 5 * MIN) {
+    settings.lastRoute ??= saved.plan.polyline; settings.lastBadDayMin ??= saved.plan.badDayMin;
+    return saved.plan;
+  }
   const plan = await api('/api/plan', { from: settings.from.at, to: settings.to.at, arriveBy: t.arriveBy.toISOString(), bufferMin: settings.buffer });
   store.set(PLAN_KEY, { id, at: Date.now(), plan });
   // Remember the route and a typical bad-day time for the days ahead.
@@ -170,18 +173,19 @@ function drawMap(route, assessed) {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
     layers = L.layerGroup().addTo(map);
+    new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
   }
   layers.clearLayers();
-  const color = { on: '#b4432a', near: '#d08a00' };
+  const color = { on: '#c2410c', near: '#c98a12' };
   for (const e of assessed.filter((x) => x.level !== 'city')) {
     const style = { color: color[e.level], weight: 6, opacity: 0.85 };
     if (e.geom.type === 'Point') L.circleMarker([e.geom.coordinates[1], e.geom.coordinates[0]], { radius: 9, color: '#fff', weight: 2, fillColor: color[e.level], fillOpacity: 1 }).bindTooltip(e.title).addTo(layers);
     else if (e.geom.type === 'LineString') L.polyline(e.geom.coordinates.map(([x, y]) => [y, x]), style).bindTooltip(e.title).addTo(layers);
     else if (e.geom.type === 'MultiLineString') L.polyline(e.geom.coordinates.map((l) => l.map(([x, y]) => [y, x])), style).bindTooltip(e.title).addTo(layers);
   }
-  if (route?.length) L.polyline(route, { color: '#1d2733', weight: 5, opacity: 0.8 }).addTo(layers);
-  L.circleMarker(settings.from.at, { radius: 8, color: '#fff', weight: 3, fillColor: '#1d2733', fillOpacity: 1 }).bindTooltip(settings.from.name).addTo(layers);
-  L.circleMarker(settings.to.at, { radius: 9, color: '#1d2733', weight: 3, fillColor: '#f4b400', fillOpacity: 1 }).bindTooltip(settings.to.name).addTo(layers);
+  if (route?.length) L.polyline(route, { color: '#3a2616', weight: 5, opacity: 0.85 }).addTo(layers);
+  L.circleMarker(settings.from.at, { radius: 8, color: '#fffaf0', weight: 3, fillColor: '#3a2616', fillOpacity: 1 }).bindTooltip(settings.from.name).addTo(layers);
+  L.circleMarker(settings.to.at, { radius: 9, color: '#3a2616', weight: 3, fillColor: '#e5a630', fillOpacity: 1 }).bindTooltip(settings.to.name).addTo(layers);
   map.fitBounds(L.latLngBounds(route?.length ? route : [settings.from.at, settings.to.at]), { padding: [24, 24] });
 }
 
@@ -213,7 +217,7 @@ async function renderTrip() {
   document.getElementById('open-settings').hidden = false;
   app.replaceChildren(document.getElementById('tpl-trip').content.cloneNode(true));
   const next = upcoming(settings, 8).filter((t) => !t.skipped);
-  if (!next.length) { $('#hero').replaceChildren(el('p', 'empty', 'No school trips in the next three weeks. Check the school days in Settings.')); return; }
+  if (!next.length) { $('#hero .door').replaceChildren(el('p', 'empty', 'No school trips in the next three weeks. Check the school days in Settings.')); return; }
   const t = next[0];
   $('#t-when').textContent = whenLabel(t);
   $('#t-dest').textContent = `to be at ${settings.to.name} by ${clock(t.arriveBy)}`;

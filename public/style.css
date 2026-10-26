@@ -110,3 +110,18 @@ h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: v
 .foot a { color: var(--mute); }
 
 @media (prefers-reduced-motion: no-preference) { .card { animation: up .25s ease-out; } @keyframes up { from { opacity: 0; transform: translateY(6px); } } }
+
+/* laptop: the answer and the map side by side, details underneath */
+@media (min-width: 980px) {
+  .top, main, .foot { max-width: 1180px; }
+  .trip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "hero map" "onway sched" "city sched" "upd upd"; column-gap: 20px; align-items: start; }
+  #hero { grid-area: hero; }
+  .map-card { grid-area: map; align-self: stretch; display: flex; flex-direction: column; margin-top: 12px; margin-bottom: 12px; }
+  .map-card #map { flex: 1; min-height: 340px; height: auto; }
+  #on-way { grid-area: onway; }
+  #elsewhere { grid-area: city; }
+  .sched { grid-area: sched; }
+  .updated { grid-area: upd; }
+  .setup { max-width: 680px; margin: 12px auto; }
+  .leave { font-size: 96px; }
+}

@@ -10,9 +10,9 @@ Made for a parent who does the school run almost every day and worries about bei
 
 - **Leave-by time and countdown** for the next drop-off or pick-up, from Google's *pessimistic* traffic forecast for that exact departure time, plus the extra minutes you choose.
 - **What's on your way:**
-  - Giants home games
-  - Warriors, Valkyries and concerts at Chase Center
-  - events at Oracle Park, Bill Graham Civic, Moscone, Golden Gate Park and the Cow Palace
+  - Giants, Warriors and Valkyries home games
+  - concerts and shows at Chase Center, Oracle Park, Bill Graham Civic, Golden Gate Park and the Cow Palace
+  - conventions at Moscone Center
   - permitted street closures (races, fairs, block parties, construction)
   - live 511 incidents
 
@@ -34,7 +34,9 @@ Made for a parent who does the school run almost every day and worries about bei
 | Drive times, route | Google Routes API (`TRAFFIC_AWARE_OPTIMAL`, `PESSIMISTIC` and `BEST_GUESS`) | `GOOGLE_MAPS_API_KEY` |
 | Address lookup | Google Geocoding API | same key |
 | Giants home games | MLB Stats API | none |
-| Arenas, stadiums, Moscone | Ticketmaster Discovery API | `TICKETMASTER_API_KEY` |
+| Warriors and Valkyries home games | ESPN team schedules (regular season and playoffs) | none |
+| Moscone conventions | SF Travel convention calendar | none |
+| Concerts and other events at Chase Center, Oracle Park, Bill Graham, Golden Gate Park, Cow Palace | Ticketmaster Discovery API | `TICKETMASTER_API_KEY` |
 | Street closures | DataSF *Temporary Street Closures* | none |
 | Incidents, roadwork (today) | 511.org traffic events | `TRAFFIC_511_API_KEY` |
 
@@ -44,6 +46,8 @@ Made for a parent who does the school run almost every day and worries about bei
   - Venues are *on your route* within 800 m and *nearby* within 2 km.
   - Street closures count when they're on a street you drive. A fully closed street counts within 250 m.
   - 511 incidents are on your route within 150 m and nearby within 600 m.
+
+Games are cross-checked: the team schedules are the record, and Ticketmaster's copy of the same game (same venue, within two hours) is dropped, so a game still shows if either source has it. If a source can't be reached, the page says which one.
 
 ### Code
 

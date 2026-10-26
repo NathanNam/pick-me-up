@@ -6,7 +6,7 @@
 <meta name="format-detection" content="telephone=no">
 <title>Pick Me Up</title>
 <meta name="description" content="Know when to leave for school pick-up in San Francisco: a bad-day drive time, a leave-by time, and the games, concerts and street closures on your route.">
-<meta name="theme-color" content="#f7f3ec">
+<meta name="theme-color" content="#f6eedb">
 <link rel="canonical" href="https://pickmeup-sf.vercel.app/">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
@@ -30,13 +30,14 @@
 <meta name="twitter:title" content="Pick Me Up">
 <meta name="twitter:description" content="When to leave for school pick-up in San Francisco, planned for a bad-traffic day, with the events on your route.">
 <meta name="twitter:image" content="https://pickmeup-sf.vercel.app/og.png">
+<link rel="preload" href="/fonts/fraunces-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/nunito-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <header class="top">
-  <div class="brand"><img src="/icon.svg" alt="" width="28" height="28"> Pick Me Up</div>
+  <div class="brand"><img src="/icon.svg" alt="" width="30" height="30"><span class="logo">Pick Me Up</span><span class="decal" aria-hidden="true"><i></i><i></i><i></i></span></div>
   <button class="ghost" id="open-settings" hidden>Settings</button>
 </header>
 
@@ -47,7 +48,7 @@
 
 <footer class="foot">
   <p id="privacy">Your addresses are saved only on this phone. They're sent to Google Maps to work out the drive, and never stored anywhere else.</p>
-  <p>Events: SF Giants (MLB), Ticketmaster venues, DataSF street closures, 511 traffic. Times are estimates; always allow extra on game days. · <a href="https://www.nathannam.com">Nathan Nam</a> · <a href="https://github.com/NathanNam/pick-me-up">code</a></p>
+  <p>Events: MLB and ESPN team schedules, Ticketmaster, SF Travel (Moscone), DataSF street closures, 511 traffic. Times are estimates; always allow extra on game days. · <a href="https://www.nathannam.com">Nathan Nam</a> · <a href="https://github.com/NathanNam/pick-me-up">code</a></p>
 </footer>
 
 <template id="tpl-setup">
@@ -98,29 +99,31 @@
 </template>
 
 <template id="tpl-trip">
-  <section class="card hero" id="hero">
-    <div class="when" id="t-when"></div>
-    <div class="leave-label" id="t-label">Leave by</div>
-    <div class="leave" id="t-leave">…</div>
-    <div class="count" id="t-count"></div>
-    <div class="dest" id="t-dest"></div>
-    <div class="verdict" id="t-verdict" role="status"></div>
-    <div class="math" id="t-math"></div>
-  </section>
-  <section class="card map-card"><div id="map" aria-label="Map of your route"></div><div class="via" id="t-via"></div></section>
-  <section class="card" id="on-way">
-    <h2>On your way</h2>
-    <ul class="events" id="t-events"></ul>
-  </section>
-  <section class="card" id="elsewhere" hidden>
-    <h2>Also in San Francisco</h2>
-    <ul class="events" id="t-city"></ul>
-  </section>
-  <section class="card">
-    <h2>Coming up</h2>
-    <ul class="week" id="t-week"></ul>
-  </section>
-  <p class="updated" id="t-updated"></p>
+  <div class="trip">
+    <section class="card hero" id="hero"><div class="door">
+      <div class="when" id="t-when"></div>
+      <div class="leave-label" id="t-label">Leave by</div>
+      <div class="leave" id="t-leave">…</div>
+      <div class="count" id="t-count"></div>
+      <div class="dest" id="t-dest"></div>
+      <div class="verdict" id="t-verdict" role="status"></div>
+      <div class="math" id="t-math"></div>
+    </div></section>
+    <section class="card map-card"><div id="map" aria-label="Map of your route"></div><div class="via" id="t-via"></div></section>
+    <section class="card" id="on-way">
+      <h2>On your way</h2>
+      <ul class="events" id="t-events"></ul>
+    </section>
+    <section class="card" id="elsewhere" hidden>
+      <h2>Also in San Francisco</h2>
+      <ul class="events" id="t-city"></ul>
+    </section>
+    <section class="card sched">
+      <h2>Carpool schedule</h2>
+      <ul class="week" id="t-week"></ul>
+    </section>
+    <p class="updated" id="t-updated"></p>
+  </div>
 </template>
 
 <script src="/vendor/leaflet/leaflet.js"></script>

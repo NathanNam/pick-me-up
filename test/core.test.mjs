@@ -83,3 +83,10 @@ test('rejects places outside the Bay Area', async () => {
   const r = await plan({ from: [40.7, -74], to: [37.79, -122.42], arriveBy: new Date(Date.now() + 3600e3).toISOString() }, 'k');
   assert.equal(r.status, 400);
 });
+
+import { parseConventions } from '../lib/events.mjs';
+test('reads Moscone conventions from the SF Travel calendar', () => {
+  const html = '<tr><td>Microsoft IGNITE 2026</td><td>Microsoft Corporation</td><td>Nov 17, 2026 - Nov 20, 2026</td><td>Venue Type:</td><td>Moscone Center</td></tr>'
+    + '<tr><td>Other Show</td><td>Org</td><td>Dec 1, 2026 - Dec 2, 2026</td><td>Venue Type:</td><td>Hotel</td></tr>';
+  assert.deepEqual(parseConventions(html), [{ name: 'Microsoft IGNITE 2026', from: '2026-11-17', to: '2026-11-20' }]);
+});

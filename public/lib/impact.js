@@ -36,9 +36,9 @@ export function assess(events, trip, route) {
     let level = 'city';
     if (distance != null && distance <= reach.on) level = 'on';
     else if (distance != null && distance <= reach.near) level = 'near';
-    // Elsewhere in the city, only big crowds and major incidents are news; a block
+    // Elsewhere in the city, only big games, shows and conventions, and major incidents, are news; a block
     // party or a lane closure matters only if it's on or near the route.
-    if (level === 'city' && !(ev.reach === 'venue' || (ev.reach === 'live' && ev.severity === 'major'))) continue;
+    if (level === 'city' && !((ev.reach === 'venue' || ev.reach === 'live') && ev.severity === 'major')) continue;
     // A lane closure a street over doesn't slow you; a fully closed street might.
     if (level === 'near' && ev.reach === 'closure' && ev.severity !== 'major') continue;
     out.push({ ...ev, level, window: win, distance });
