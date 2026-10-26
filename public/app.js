@@ -27,7 +27,7 @@ let settings = store.get(KEY);
 function upcoming(s, n, now = new Date()) {
   const out = [];
   const today = sfDate(now);
-  for (let d = 0; d < 21 && out.length < n; d++) {
+  for (let d = 0; d < 21; d++) {
     const day = addDays(today, d);
     const wd = sfWeekday(new Date(day + 'T12:00:00-08:00'));
     if (!s.days.includes(wd)) continue;
@@ -36,7 +36,12 @@ function upcoming(s, n, now = new Date()) {
       if (arriveBy > now) out.push({ day, trip, arriveBy, skipped: s.skip.includes(day) });
     }
   }
-  return out.slice(0, n);
+  // One-off trips (a weekend school event, an early pick-up) on their own day.
+  for (const x of s.extras ?? []) {
+    const arriveBy = sfTime(x.day, x.time);
+    if (arriveBy > now && x.day <= addDays(today, 21)) out.push({ day: x.day, trip: { id: x.id, label: x.label, time: x.time, extra: true }, arriveBy, skipped: false });
+  }
+  return out.sort((a, b) => a.arriveBy - b.arriveBy).slice(0, n);
 }
 
 // ---- server calls ----
@@ -108,6 +113,28 @@ function renderSetup(existing) {
     q.addEventListener('input', () => { chosen[which] = null; list.replaceChildren(); });
   }
 
+  // one-off trips
+  let extras = [...(existing?.extras ?? [])].filter((x) => x.day >= sfDate());
+  const xList = $('#extras');
+  const drawExtras = () => xList.replaceChildren(...extras.sort((a, b) => (a.day + a.time).localeCompare(b.day + b.time)).map((x) => {
+    const li = el('li', null);
+    li.append(el('span', null, `${dayLabel(x.day)} · ${clock(sfTime(x.day, x.time))} · ${x.label}`));
+    const rm = el('button', 'skipbtn', 'Remove'); rm.type = 'button';
+    rm.addEventListener('click', () => { extras = extras.filter((y) => y !== x); drawExtras(); });
+    li.append(rm);
+    return li;
+  }));
+  form.elements['x-date'].min = sfDate();
+  $('#x-add').addEventListener('click', () => {
+    const day = form.elements['x-date'].value, time = form.elements['x-time'].value, label = form.elements['x-label'].value.trim() || 'School event';
+    if (!day || !time || day < sfDate()) { msg.textContent = 'Pick a date from today on and a time for the one-off trip.'; return; }
+    msg.textContent = '';
+    extras.push({ id: `x${Date.now()}`, day, time, label: label.slice(0, 40) });
+    form.elements['x-label'].value = '';
+    drawExtras();
+  });
+  drawExtras();
+
   if (existing) {
     for (const t of existing.trips) { form.elements[`${t.id}-on`].checked = t.on; form.elements[t.id].value = t.time; }
     for (const box of form.querySelectorAll('[name=day]')) box.checked = existing.days.includes(+box.value);
@@ -123,12 +150,12 @@ function renderSetup(existing) {
       { id: 'pick', label: 'Pick-up', time: form.elements.pick.value || '15:00', on: form.elements['pick-on'].checked },
     ];
     const days = [...form.querySelectorAll('[name=day]:checked')].map((b) => +b.value);
-    if (!trips.some((t) => t.on) || !days.length) { msg.textContent = 'Choose at least one trip and one school day.'; return; }
+    if ((!trips.some((t) => t.on) || !days.length) && !extras.length) { msg.textContent = 'Choose at least one trip and one school day, or add a one-off trip.'; return; }
     const moved = !existing || existing.from.at.join() !== chosen.from.at.join() || existing.to.at.join() !== chosen.to.at.join();
     settings = {
       from: { ...chosen.from, name: form.querySelector('[data-place=from] [name=name]').value.trim() || 'Home' },
       to: { ...chosen.to, name: form.querySelector('[data-place=to] [name=name]').value.trim() || 'School' },
-      trips, days, buffer: +form.querySelector('[name=buffer]:checked').value,
+      trips, days, extras, buffer: +form.querySelector('[name=buffer]:checked').value,
       skip: (existing?.skip ?? []).filter((d) => d >= sfDate()),
       lastRoute: moved ? null : existing?.lastRoute, lastBadDayMin: moved ? null : existing?.lastBadDayMin,
     };
@@ -306,10 +333,11 @@ function renderWeek(hero) {
     head.append(el('b', null, `${t.trip.label} ${clock(t.arriveBy)}`), el('div', 'ev-m', t.skipped ? 'No school' : `Leave about ${clock(leave)}`));
     const sub = el('div', 'ev-m', t.skipped ? '' : 'Checking events…');
     w.append(head, sub);
-    const btn = el('button', 'skipbtn', t.skipped ? 'Undo' : 'Skip');
-    btn.setAttribute('aria-label', t.skipped ? `Undo no school on ${dayLabel(t.day)}` : `No school on ${dayLabel(t.day)}`);
+    const btn = el('button', 'skipbtn', t.trip.extra ? 'Remove' : t.skipped ? 'Undo' : 'Skip');
+    btn.setAttribute('aria-label', t.trip.extra ? `Remove ${t.trip.label}` : t.skipped ? `Undo no school on ${dayLabel(t.day)}` : `No school on ${dayLabel(t.day)}`);
     btn.addEventListener('click', () => {
-      settings.skip = t.skipped ? settings.skip.filter((x) => x !== t.day) : [...settings.skip, t.day];
+      if (t.trip.extra) settings.extras = settings.extras.filter((x) => x.id !== t.trip.id);
+      else settings.skip = t.skipped ? settings.skip.filter((x) => x !== t.day) : [...settings.skip, t.day];
       store.set(KEY, settings); renderTrip();
     });
     li.append(d, dot, w, btn);
@@ -326,4 +354,4 @@ function renderWeek(hero) {
 }
 
 document.getElementById('open-settings').addEventListener('click', () => renderSetup(settings));
-if (settings?.from?.at && settings?.to?.at) { settings.skip ??= []; renderTrip(); } else renderSetup(null);
+if (settings?.from?.at && settings?.to?.at) { settings.skip ??= []; settings.extras = (settings.extras ?? []).filter((x) => x.day >= sfDate()); renderTrip(); } else renderSetup(null);

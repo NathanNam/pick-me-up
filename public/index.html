@@ -66,6 +66,7 @@
 
 <template id="tpl-setup">
   <section class="card setup">
+    <img class="art" src="/art/pickup.svg" alt="A parent in a station wagon waves from the school curb as a kid runs over" width="640" height="300">
     <h1>Leave on time, every time</h1>
     <p class="lede">Tell it where you start and where school is. It plans each drive for a bad-traffic day and checks San Francisco's games, concerts and street closures along your way.</p>
     <form id="setup-form" autocomplete="off">
@@ -94,7 +95,19 @@
           <label><input type="checkbox" name="day" value="3" checked><span>Wed</span></label>
           <label><input type="checkbox" name="day" value="4" checked><span>Thu</span></label>
           <label><input type="checkbox" name="day" value="5" checked><span>Fri</span></label>
+          <label><input type="checkbox" name="day" value="6"><span>Sat</span></label>
+          <label><input type="checkbox" name="day" value="0"><span>Sun</span></label>
         </div>
+      </fieldset>
+      <fieldset class="extras-set">
+        <legend>One-off trips</legend>
+        <p class="hint">A weekend school event, a game, an early pick-up. They show up on that day only.</p>
+        <ul class="extras" id="extras"></ul>
+        <div class="row extra-add">
+          <input type="date" name="x-date" aria-label="Date">
+          <input type="time" name="x-time" value="10:00" aria-label="Be there by">
+        </div>
+        <div class="row extra-add"><input name="x-label" placeholder="What is it? e.g. Science fair" aria-label="What is it"><button type="button" class="find" id="x-add">Add</button></div>
       </fieldset>
       <fieldset>
         <legend>Extra time on top of a bad-day drive</legend>
@@ -131,6 +144,7 @@
       <h2>Also in San Francisco</h2>
       <ul class="events" id="t-city"></ul>
     </section>
+    <section class="card art-card" aria-hidden="true"><img src="/art/pickup.svg" alt="" width="640" height="300"></section>
     <section class="card sched">
       <h2>Carpool schedule</h2>
       <ul class="week" id="t-week"></ul>

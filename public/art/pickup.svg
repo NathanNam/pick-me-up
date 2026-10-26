@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-labelledby="t">
+  <title id="t">A parent in a wood-panelled station wagon waves from the school curb as a kid with a backpack runs over</title>
+  <defs>
+    <pattern id="wood" width="40" height="22" patternUnits="userSpaceOnUse">
+      <rect width="40" height="22" fill="#8b5a2b"/>
+      <path d="M0 4 H40 M0 9 Q20 7 40 10 M0 15 H40 M0 19 Q14 21 40 18" stroke="#6e4320" stroke-width="1.6" fill="none"/>
+      <path d="M0 12 Q20 11 40 13" stroke="#a5703a" stroke-width="1.2" fill="none"/>
+    </pattern>
+    <pattern id="brick" width="28" height="14" patternUnits="userSpaceOnUse">
+      <rect width="28" height="14" fill="#c4643a"/>
+      <path d="M0 7 H28 M0 14 H28 M14 0 V7 M0 7 V14 M28 7 V14" stroke="#a74f2b" stroke-width="1.5"/>
+    </pattern>
+    <clipPath id="glass"><path d="M196 150 L232 112 H382 L410 150 Z"/></clipPath>
+  </defs>
+
+  <!-- sky and sun -->
+  <rect width="640" height="300" fill="#f6eedb"/>
+  <g fill="#f4c35a">
+    <circle cx="560" cy="62" r="30"/>
+  </g>
+  <g stroke="#f4c35a" stroke-width="5" stroke-linecap="round">
+    <path d="M560 14 V22 M560 102 V110 M512 62 H520 M600 62 H608 M526 28 L532 34 M588 90 L594 96 M594 28 L588 34 M532 90 L526 96"/>
+  </g>
+  <!-- three decal stripes on the horizon -->
+  <rect x="0" y="232" width="640" height="6" fill="#d9631e"/>
+  <rect x="0" y="238" width="640" height="6" fill="#e5a630"/>
+  <rect x="0" y="244" width="640" height="6" fill="#7a4a24"/>
+
+  <!-- school -->
+  <g>
+    <rect x="30" y="96" width="200" height="140" fill="url(#brick)"/>
+    <path d="M22 100 L130 46 L238 100 Z" fill="#7a4a24"/>
+    <rect x="110" y="20" width="40" height="40" fill="#fffaf0" stroke="#7a4a24" stroke-width="4"/>
+    <path d="M104 24 L130 4 L156 24 Z" fill="#7a4a24"/>
+    <circle cx="130" cy="40" r="9" fill="#e5a630" stroke="#7a4a24" stroke-width="3"/>
+    <rect x="72" y="104" width="116" height="22" rx="3" fill="#fffaf0" stroke="#3a2616" stroke-width="3"/>
+    <text x="130" y="121" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="15" fill="#3a2616" letter-spacing="3">SCHOOL</text>
+    <g fill="#fdf3d6" stroke="#fffaf0" stroke-width="3">
+      <rect x="46" y="140" width="34" height="30"/><rect x="180" y="140" width="34" height="30"/>
+      <rect x="46" y="184" width="34" height="30"/><rect x="180" y="184" width="34" height="30"/>
+    </g>
+    <path d="M46 155 H80 M63 140 V170 M180 155 H214 M197 140 V170 M46 199 H80 M63 184 V214 M180 199 H214 M197 184 V214" stroke="#c9b48a" stroke-width="2"/>
+    <rect x="106" y="160" width="48" height="76" rx="3" fill="#6f7d2c"/>
+    <circle cx="144" cy="200" r="3" fill="#e5a630"/>
+    <!-- flagpole -->
+    <path d="M258 236 V60" stroke="#9aa0a6" stroke-width="4"/>
+    <path d="M260 62 H298 L290 74 L298 86 H260 Z" fill="#d9631e"/>
+  </g>
+
+  <!-- curb and road -->
+  <rect x="0" y="250" width="640" height="10" fill="#d8c9a8"/>
+  <rect x="0" y="260" width="640" height="40" fill="#5b4a3a"/>
+  <path d="M20 282 H80 M130 282 H190 M240 282 H300 M350 282 H410 M460 282 H520 M570 282 H630" stroke="#e5a630" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- the station wagon -->
+  <g transform="translate(40 0)">
+    <path d="M176 236 L176 172 Q176 152 196 150 L232 112 H382 Q392 112 398 120 L424 150 H468 Q492 152 494 176 L494 236 Z" fill="#e5a630"/>
+    <!-- windows -->
+    <path d="M196 150 L232 112 H382 L410 150 Z" fill="#cfe3ea"/>
+    <g clip-path="url(#glass)">
+      <path d="M300 112 V150 M346 112 V150" stroke="#e5a630" stroke-width="7"/>
+      <!-- the parent, waving from the front seat -->
+      <circle cx="372" cy="128" r="11" fill="#8d5a3b"/>
+      <path d="M358 150 Q372 136 386 150 Z" fill="#d9631e"/>
+      <path d="M360 124 Q372 110 384 124" stroke="#2b1b10" stroke-width="7" fill="none" stroke-linecap="round"/>
+    </g>
+    <path d="M388 128 Q400 116 404 104" stroke="#8d5a3b" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <circle cx="405" cy="101" r="5" fill="#8d5a3b"/>
+    <!-- wood panel and chrome trim -->
+    <rect x="186" y="170" width="300" height="44" rx="4" fill="url(#wood)"/>
+    <rect x="186" y="170" width="300" height="44" rx="4" fill="none" stroke="#c9ccd1" stroke-width="3"/>
+    <path d="M300 170 V214 M346 170 V214" stroke="#c9ccd1" stroke-width="2.5"/>
+    <rect x="168" y="222" width="32" height="10" rx="4" fill="#c9ccd1"/>
+    <rect x="470" y="222" width="32" height="10" rx="4" fill="#c9ccd1"/>
+    <rect x="482" y="176" width="12" height="10" rx="2" fill="#fff3c4"/>
+    <rect x="176" y="180" width="8" height="12" rx="2" fill="#d9631e"/>
+    <!-- wheels -->
+    <g>
+      <circle cx="232" cy="238" r="22" fill="#2b1b10"/><circle cx="232" cy="238" r="10" fill="#c9ccd1"/>
+      <circle cx="436" cy="238" r="22" fill="#2b1b10"/><circle cx="436" cy="238" r="10" fill="#c9ccd1"/>
+    </g>
+  </g>
+
+  <!-- the kid, running to the car -->
+  <g transform="translate(30 0)">
+    <path d="M540 248 L552 222 M560 248 L556 222" stroke="#3a5a8c" stroke-width="7" stroke-linecap="round"/>
+    <rect x="538" y="186" width="28" height="40" rx="10" fill="#6f7d2c"/>
+    <rect x="556" y="190" width="18" height="28" rx="6" fill="#d9631e"/>
+    <path d="M540 196 L520 184" stroke="#f0c29a" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="551" cy="172" r="13" fill="#f0c29a"/>
+    <path d="M538 170 Q551 152 564 168" fill="#7a4a24"/>
+    <path d="M524 172 Q518 178 524 184 M514 168 Q504 178 514 190" stroke="#d9631e" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

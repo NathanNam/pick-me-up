@@ -119,14 +119,67 @@ h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: v
 /* laptop: the answer and the map side by side, details underneath */
 @media (min-width: 980px) {
   .top, main, .foot { max-width: 1180px; }
-  .board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "hero map" "onway sched" "city sched" "upd upd"; column-gap: 20px; align-items: start; }
+  .board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "hero map" "onway sched" "city sched" "art sched" "upd upd"; grid-template-rows: auto auto auto 1fr auto; column-gap: 20px; align-items: start; }
   #hero { grid-area: hero; }
   .map-card { grid-area: map; align-self: stretch; display: flex; flex-direction: column; margin-top: 12px; margin-bottom: 12px; }
   .map-card #map { flex: 1; min-height: 340px; height: auto; }
   #on-way { grid-area: onway; }
   #elsewhere { grid-area: city; }
+  .art-card { grid-area: art; display: block !important; }
   .sched { grid-area: sched; }
   .updated { grid-area: upd; }
   .setup { max-width: 680px; margin: 12px auto; }
   .leave { font-size: 96px; }
 }
+
+/* ---- Theme: wood-panel station wagon, early-80s carpool ---- */
+@font-face { font-family: "Fraunces"; font-weight: 100 900; font-style: normal; src: url(/fonts/fraunces-latin-full-normal.woff2) format("woff2"); }
+
+:root { --bg:#f4ead4; --card:#fffaf0; --ink:#3a2616; --mute:#7d6650; --line:#e4d3b2; --green:#5f6f1f; --green-soft:#eef0d6; --amber:#9a6400; --amber-soft:#fbefcf; --red:#b8441b; --red-soft:#f9e0d2; --blue:#a44a14; --wood:#7a4a24; }
+body { background:#f4ead4; }
+h1, h2, .brand .logo, .leave, .when, .count { font-family:"Fraunces",Georgia,serif; font-variation-settings:"SOFT" 100,"WONK" 1,"opsz" 144; }
+.brand { font-size:24px; color:#5a3417; font-weight:900; }
+.decal { display:inline-flex; flex-direction:column; gap:2px; margin-left:8px; } .decal i { display:block; width:46px; height:4px; border-radius:2px; } .decal i:nth-child(1){background:#d9631e} .decal i:nth-child(2){background:#e5a630} .decal i:nth-child(3){background:#7a4a24}
+.card { border-color:#e4d3b2; box-shadow:0 2px 0 #e0cda8, 0 8px 22px #5a34170f; }
+h2 { text-transform:none; letter-spacing:0; font-size:22px; color:#5a3417; font-weight:800; }
+.hero { padding:14px; background:
+  linear-gradient(180deg,#0000 0 46%,#ffffff22 50%,#0000 54%),
+  repeating-linear-gradient(180deg,#7a4a24 0 5px,#8c5a2c 5px 9px,#6b3f1e 9px 11px,#93612f 11px 18px,#7f4e27 18px 23px);
+  border:3px solid #c9ccd1; box-shadow: inset 0 0 0 2px #8e9399, 0 8px 22px #5a34171f; }
+.hero::before { display:none; }
+.door { background:#fffaf0; border-radius:12px; padding:20px 14px 16px; box-shadow: 0 0 0 3px #d9dce0, 0 0 0 5px #9aa0a6; }
+.when { color:#a44a14; font-weight:800; font-size:16px; letter-spacing:.06em; }
+.leave { font-weight:900; color:#3a2616; letter-spacing:-.01em; }
+.count { font-weight:800; }
+.verdict { border-radius:6px; transform:rotate(-1.2deg); font-family:"Fraunces",Georgia,serif; font-variation-settings:"SOFT" 100,"WONK" 1; font-weight:900; text-transform:uppercase; letter-spacing:.03em; border:2px dashed #fffaf099; box-shadow:0 2px 0 #00000022; }
+.verdict::before { display:none; }
+.verdict.clear { background:#6f7d2c; color:#fffaf0; } .verdict.heads-up { background:#e5a630; color:#3a2616; } .verdict.watch { background:#d9631e; color:#fffaf0; }
+.leaflet-tile-pane { filter:sepia(.45) saturate(.8) brightness(1.03); }
+/* The carpool schedule is a ruled notepad page: every line of text sits on a rule. */
+.sched { background:#fffdf6; position:relative; padding-left:40px; }
+.sched::before { content:""; position:absolute; left:26px; top:0; bottom:0; width:2px; background:#e8a0a0; }
+.sched h2 { line-height:32px; margin:0 0 8px; }
+.week { background: repeating-linear-gradient(180deg, #0000 0 23px, #bcd3e6 23px 24px); }
+.week li, .week li:first-child { border-top:0; padding:0 0 24px; align-items:flex-start; gap:10px; }
+.week li:last-child { padding-bottom:0; }
+.week .d, .week .d small, .week .w, .week .w div, .week .w b { line-height:24px; font-size:15px; }
+.week .d small { font-size:14px; }
+.week .dot { margin-top:6px; }
+.week .skipbtn { line-height:20px; padding:1px 8px; margin-top:1px; background:#fffdf6; }
+.ico { background:#f6e6c4; }
+.primary { background:#d9631e; color:#fffaf0; box-shadow:0 3px 0 #8a3d12; border-radius:10px; }
+.setup .find { background:#fbefcf; border-color:#e5a630; }
+.days input:checked + span { background:#5a3417; border-color:#5a3417; }
+
+/* the pick-up illustration: on the setup card, and filling the laptop's left column */
+.art { display: block; width: calc(100% + 36px); max-width: none; height: auto; margin: -18px -18px 12px; border-radius: 20px 20px 0 0; }
+.art-card { display: none; padding: 0; overflow: hidden; }
+.art-card img { display: block; width: 100%; height: auto; }
+
+/* one-off trips in settings */
+.hint { color: var(--mute); font-size: 15px; margin: 0 0 8px; }
+.extras { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.extras li { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; background: #fff; font-weight: 700; font-size: 15px; }
+.extra-add { margin-top: 8px; }
+.extra-add .find { margin-top: 0; flex: none; }
+.setup input[type=date], .setup input[type=time] { flex: 1; min-width: 0; }
