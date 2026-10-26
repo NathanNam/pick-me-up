@@ -209,3 +209,20 @@ h2 { text-transform:none; letter-spacing:0; font-size:22px; color:#5a3417; font-
 .legs.then select { flex: 0 1 60%; }
 
 .then-line { margin-top: 6px; color: var(--ink); font-weight: 700; }
+
+/* iPhone Safari gives time/date inputs and selects a wide built-in minimum
+   width, which pushed them past the card's edge. Let them shrink. */
+.setup input[type=date], .setup input[type=time], .legs select { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.setup input[type=date], .setup input[type=time] { min-height: 46px; text-align: center; }
+.trip input[type=time] { flex: 0 0 136px; width: 136px; }
+.extra-add input[type=date], .extra-add input[type=time] { flex: 1 1 0; width: 0; }
+.legs { min-width: 0; }
+.legs select {
+  flex: 1 1 0; width: 0; text-overflow: ellipsis; padding-right: 28px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237d6650' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 10px center;
+}
+.legs.then select { flex: 1 1 0; width: 0; max-width: 260px; }
+@media (max-width: 420px) {
+  .legs { margin-left: 0; }
+  .trip { flex-wrap: wrap; }
+}
