@@ -17,13 +17,20 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const pub = path.join(root, 'public');
 const chrome = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const font = fs.readFileSync(path.join(pub, 'fonts/nunito-latin-wght-normal.woff2')).toString('base64');
+const display = fs.readFileSync(path.join(pub, 'fonts/fraunces-latin-full-normal.woff2')).toString('base64');
+const art = fs.readFileSync(path.join(pub, 'art/pickup.jpg')).toString('base64');
 
-// A navy map pin whose head is a clock, on school-bus yellow.
+// A brown map pin whose head is a clock, on harvest gold, with the wagon's
+// three-stripe decal along the bottom.
 const ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#f4b400"/>
-  <path d="M32 58 C24 47 13 38 13 26 a19 19 0 0 1 38 0 C51 38 40 47 32 58Z" fill="#1d2733"/>
-  <circle cx="32" cy="26" r="12.5" fill="#fffdf9"/>
-  <path d="M32 18.5 V26 L37.5 29" fill="none" stroke="#1d2733" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <clipPath id="r"><rect width="64" height="64" rx="14"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="64" height="64" fill="#e5a630"/>
+    <rect y="50" width="64" height="5" fill="#d9631e"/><rect y="55" width="64" height="5" fill="#7a4a24"/><rect y="60" width="64" height="4" fill="#3a2616"/>
+  </g>
+  <path d="M32 54 C24 44 14 36 14 25 a18 18 0 0 1 36 0 C50 36 40 44 32 54Z" fill="#3a2616"/>
+  <circle cx="32" cy="25" r="12" fill="#fffaf0"/>
+  <path d="M32 17.5 V25 L37.5 28" fill="none" stroke="#3a2616" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`;
 
 function ico(pngs) {
@@ -45,55 +52,79 @@ function ico(pngs) {
 // Center while crowds arrive) flagged on the route.
 const POSTER = `<!doctype html><style>
 @font-face{font-family:N;font-weight:300 900;src:url(data:font/woff2;base64,${font})}
+@font-face{font-family:F;font-weight:100 900;src:url(data:font/woff2;base64,${display})}
 *{margin:0;box-sizing:border-box}
-body{width:1200px;height:630px;overflow:hidden;background:#f7f3ec;color:#1d2733;font:600 18px/1.4 N,sans-serif;position:relative}
-body:before{content:"";position:absolute;right:-120px;top:-160px;width:760px;height:760px;border-radius:50%;background:radial-gradient(circle,#fff3cc 0,#f7f3ec00 70%)}
-.left{position:absolute;left:72px;top:70px;width:560px}
-.k{display:flex;align-items:center;gap:12px;font-weight:800;font-size:17px;letter-spacing:.14em;text-transform:uppercase;color:#6a7280}
-.k svg{width:44px;height:44px}
-h1{font-weight:900;font-size:104px;line-height:.95;letter-spacing:-.04em;margin:26px 0 22px}
-h1 span{color:#f4b400;-webkit-text-stroke:0}
-.tl{font-weight:800;font-size:30px;line-height:1.25}
-.sub{margin-top:16px;color:#6a7280;font-size:19px;line-height:1.5}
-.url{position:absolute;left:72px;bottom:56px;font-weight:800;font-size:22px;background:#1d2733;color:#fff;border-radius:14px;padding:10px 18px}
-.phone{position:absolute;right:84px;top:44px;width:400px;height:640px;border-radius:52px;background:#1d2733;padding:14px;box-shadow:0 30px 60px #1d273330}
-.scr{background:#f7f3ec;border-radius:40px;height:100%;padding:26px 18px;overflow:hidden}
-.bar{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;margin-bottom:12px}
-.bar svg{width:24px;height:24px}
-.card{background:#fffdf9;border:1px solid #e7e0d4;border-radius:22px;padding:20px 16px 16px;text-align:center;position:relative;overflow:hidden;box-shadow:0 6px 20px #1d27330d}
-.card:before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:#f4b400}
-.w{font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#6a7280}
-.l{margin-top:8px;font-weight:700;color:#6a7280;font-size:16px}
-.t{font-weight:900;font-size:72px;line-height:1;letter-spacing:-.03em;margin:2px 0 6px}
-.c{font-weight:800;font-size:19px}
-.d{color:#6a7280;font-size:15px}
-.v{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:7px 13px;border-radius:999px;background:#fbe6df;color:#b4432a;font-weight:800;font-size:15px}
-.v:before{content:"";width:9px;height:9px;border-radius:50%;background:currentColor}
-.m{color:#6a7280;font-size:14px;margin-top:10px}.m b{color:#1d2733}
-.ev{margin-top:12px;background:#fffdf9;border:1px solid #e7e0d4;border-radius:22px;padding:14px 14px;display:grid;grid-template-columns:40px 1fr;gap:10px;text-align:left}
-.i{width:40px;height:40px;border-radius:12px;background:#fbe6df;display:grid;place-items:center;font-size:20px}
-.et{font-weight:800;font-size:15px;line-height:1.25}.et span{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:#fbe6df;color:#b4432a;border-radius:6px;padding:1px 6px;margin-right:6px}
-.em{color:#6a7280;font-size:13px}
+body{width:1200px;height:630px;overflow:hidden;background:#f6eedb;color:#3a2616;font:600 18px/1.4 N,sans-serif;position:relative}
+.soft{font-family:F,serif;font-variation-settings:"SOFT" 100,"WONK" 1,"opsz" 144}
+.art{position:absolute;left:0;bottom:0;width:760px;height:356px;display:block}
+.left{position:absolute;left:64px;top:52px;width:620px}
+.k{display:flex;align-items:center;gap:12px;font-weight:800;font-size:16px;letter-spacing:.14em;text-transform:uppercase;color:#a44a14}
+.k svg{width:40px;height:40px}
+h1{font-weight:900;font-size:96px;line-height:.95;letter-spacing:-.02em;margin:14px 0 14px;color:#5a3417;display:flex;align-items:center;gap:18px}
+.decal{display:inline-flex;flex-direction:column;gap:5px}.decal i{display:block;width:84px;height:9px;border-radius:4px}
+.decal i:nth-child(1){background:#d9631e}.decal i:nth-child(2){background:#e5a630}.decal i:nth-child(3){background:#7a4a24}
+.tl{font-weight:800;font-size:28px;line-height:1.25}
+.sub{margin-top:10px;color:#7d6650;font-size:18px;line-height:1.45}
+.url{position:absolute;right:452px;top:286px;display:none}
+.phone{position:absolute;right:70px;top:40px;width:370px;height:620px;border-radius:50px;background:#3a2616;padding:13px;box-shadow:0 30px 60px #3a261633}
+.scr{background:#f4ead4;border-radius:38px;height:100%;padding:24px 16px;overflow:hidden}
+.bar{display:flex;align-items:center;gap:8px;font-weight:900;font-size:19px;margin-bottom:12px;color:#5a3417}
+.bar svg{width:26px;height:26px}
+.wood{border-radius:20px;padding:11px;border:3px solid #c9ccd1;background:linear-gradient(180deg,#0000 0 46%,#ffffff22 50%,#0000 54%),repeating-linear-gradient(180deg,#7a4a24 0 5px,#8c5a2c 5px 9px,#6b3f1e 9px 11px,#93612f 11px 18px,#7f4e27 18px 23px)}
+.door{background:#fffaf0;border-radius:12px;padding:16px 12px 14px;text-align:center;box-shadow:0 0 0 3px #d9dce0,0 0 0 5px #9aa0a6}
+.w{font-weight:800;font-size:13px;letter-spacing:.06em;color:#a44a14;text-transform:uppercase}
+.l{margin-top:6px;font-weight:700;color:#7d6650;font-size:15px}
+.t{font-weight:900;font-size:64px;line-height:1;margin:2px 0 6px}
+.d{color:#7d6650;font-size:14px}
+.v{display:inline-block;margin-top:10px;padding:6px 12px;border-radius:6px;background:#d9631e;color:#fffaf0;font-weight:900;font-size:13px;letter-spacing:.03em;text-transform:uppercase;transform:rotate(-1.5deg);border:2px dashed #fffaf099}
+.m{color:#7d6650;font-size:13px;margin-top:8px}.m b{color:#3a2616}
+.note{margin-top:12px;background:#fffdf6 repeating-linear-gradient(180deg,#0000 0 23px,#bcd3e6 23px 24px);border-radius:16px;padding:12px 12px 4px 30px;position:relative;border:1px solid #e4d3b2}
+.note:before{content:"";position:absolute;left:20px;top:0;bottom:0;width:2px;background:#e8a0a0}
+.note h4{font-weight:800;font-size:17px;line-height:24px;color:#5a3417}
+.note div{font-size:13px;line-height:24px}.note b{font-weight:800}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.url2{position:absolute;left:64px;top:370px;font-weight:800;font-size:20px;background:#d9631e;color:#fffaf0;border-radius:12px;padding:8px 16px;box-shadow:0 3px 0 #8a3d12}
 </style>
+<canvas class="art" id="art" width="1280" height="600"></canvas>
+<script>
+// The picture's sky is plain cream: paint out its sun and cloud so the title has room.
+const img = new Image();
+img.onload = () => {
+  const c = document.getElementById('art'), g = c.getContext('2d');
+  g.drawImage(img, 0, 0, 1280, 600);
+  const [r, gg, b] = g.getImageData(640, 24, 1, 1).data;
+  g.fillStyle = 'rgb(' + r + ',' + gg + ',' + b + ')';
+  g.fillRect(0, 0, 1280, 6);       // the picture's top border
+  g.fillRect(490, 0, 230, 205);   // sun
+  g.fillRect(95, 90, 170, 85);    // cloud
+  document.body.dataset.ready = '1';
+};
+img.src = 'data:image/jpeg;base64,${art}';
+</script>
 <div class="left">
-  <div class="k">${ICON} San Francisco · school run</div>
-  <h1>Pick Me<br>Up<span>.</span></h1>
+  <div class="k">${ICON} San Francisco · school carpool</div>
+  <h1 class="soft">Pick Me Up <span class="decal"><i></i><i></i><i></i></span></h1>
   <p class="tl">Know when to leave for school,<br>planned for a bad-traffic day.</p>
-  <p class="sub">Bad-day drive time · a leave-by countdown<br>Giants games, Chase Center, street closures on your route</p>
+  <p class="sub">Leave-by countdown · games, concerts, conventions<br>and street closures checked along your route</p>
 </div>
-<div class="url">pickmeup-sf.vercel.app</div>
+<div class="url2">pickmeup-sf.vercel.app</div>
 <div class="phone"><div class="scr">
-  <div class="bar">${ICON} Pick Me Up</div>
-  <div class="card">
-    <div class="w">Pick-up · Today</div>
+  <div class="bar">${ICON}<span class="soft">Pick Me Up</span></div>
+  <div class="wood"><div class="door">
+    <div class="w soft">Pick-up · Today</div>
     <div class="l">Leave by</div>
-    <div class="t">2:22 PM</div>
-    <div class="c">in 48 min</div>
+    <div class="t soft">2:14 PM</div>
     <div class="d">to be at School by 3:00 PM</div>
-    <div class="v">Valkyries game on your route</div>
-    <div class="m">Bad-day drive <b>28 min</b> · usually 19 · plus your 10 min</div>
+    <div class="v soft">Game at Chase Center on your route</div>
+    <div class="m">Bad-day drive <b>26 min</b> · usually 17 · plus 10 min</div>
+  </div></div>
+  <div class="note">
+    <h4 class="soft">Carpool schedule</h4>
+    <div><span class="dot" style="background:#6f7d2c"></span><b>Tue</b> · Pick-up 3:00 · nothing unusual</div>
+    <div><span class="dot" style="background:#e5a630"></span><b>Wed</b> · Pick-up 3:00 · summit nearby</div>
+    <div><span class="dot" style="background:#6f7d2c"></span><b>Thu</b> · Pick-up 3:00 · nothing unusual</div>
+    <div><span class="dot" style="background:#6f7d2c"></span><b>Sat</b> · Science fair 10:00 AM</div>
   </div>
-  <div class="ev"><div class="i">🏟️</div><div><div class="et"><span>On your route</span>WNBA Playoffs: Valkyries v Dream</div><div class="em">Crowds arriving 3:30–5:15 PM · Chase Center</div></div></div>
 </div></div>`;
 
 const browser = await puppeteer.launch({ executablePath: chrome, headless: true });
@@ -114,6 +145,7 @@ try {
 
   await page.setViewport({ width: 1200, height: 630, deviceScaleFactor: 1 });
   await page.setContent(POSTER, { waitUntil: 'load' });
+  await page.waitForSelector('body[data-ready]');
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: path.join(pub, 'og.png') });
   console.log('wrote public/og.png');
