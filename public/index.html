@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no">
+<title>Pick Me Up</title>
+<meta name="description" content="Know when to leave for school pick-up in San Francisco: a bad-day drive time, a leave-by time, and the games, concerts and street closures on your route.">
+<meta name="theme-color" content="#f7f3ec">
+<link rel="canonical" href="https://pickmeup-sf.vercel.app/">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pick Me Up">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Pick Me Up">
+<meta property="og:title" content="Pick Me Up">
+<meta property="og:description" content="When to leave for school pick-up in San Francisco, planned for a bad-traffic day, with the games, concerts and street closures on your route.">
+<meta property="og:url" content="https://pickmeup-sf.vercel.app/">
+<meta property="og:image" content="https://pickmeup-sf.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Pick Me Up: a phone card saying leave by 2:31 PM, with a Valkyries game flagged near the route">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:creator" content="@nathannam">
+<meta name="twitter:title" content="Pick Me Up">
+<meta name="twitter:description" content="When to leave for school pick-up in San Francisco, planned for a bad-traffic day, with the events on your route.">
+<meta name="twitter:image" content="https://pickmeup-sf.vercel.app/og.png">
+<link rel="preload" href="/fonts/nunito-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><img src="/icon.svg" alt="" width="28" height="28"> Pick Me Up</div>
+  <button class="ghost" id="open-settings" hidden>Settings</button>
+</header>
+
+<main id="app">
+  <!-- Filled by app.js: the setup form on first visit, then the trip view. -->
+  <noscript><p class="card">Pick Me Up needs JavaScript.</p></noscript>
+</main>
+
+<footer class="foot">
+  <p id="privacy">Your addresses are saved only on this phone. They're sent to Google Maps to work out the drive, and never stored anywhere else.</p>
+  <p>Events: SF Giants (MLB), Ticketmaster venues, DataSF street closures, 511 traffic. Times are estimates; always allow extra on game days. · <a href="https://www.nathannam.com">Nathan Nam</a> · <a href="https://github.com/NathanNam/pick-me-up">code</a></p>
+</footer>
+
+<template id="tpl-setup">
+  <section class="card setup">
+    <h1>Leave on time, every time</h1>
+    <p class="lede">Tell it where you start and where school is. It plans each drive for a bad-traffic day and checks San Francisco's games, concerts and street closures along your way.</p>
+    <form id="setup-form" autocomplete="off">
+      <fieldset class="place" data-place="from">
+        <legend>Where you start</legend>
+        <div class="row"><input name="name" value="Home" aria-label="Name for this place" class="short"><input name="q" placeholder="Street address" aria-label="Start address" required></div>
+        <button type="button" class="find">Find</button>
+        <div class="matches" role="radiogroup" aria-label="Matching addresses"></div>
+      </fieldset>
+      <fieldset class="place" data-place="to">
+        <legend>School</legend>
+        <div class="row"><input name="name" value="School" aria-label="Name for this place" class="short"><input name="q" placeholder="School name or address" aria-label="School address" required></div>
+        <button type="button" class="find">Find</button>
+        <div class="matches" role="radiogroup" aria-label="Matching addresses"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Be there by</legend>
+        <label class="trip"><input type="checkbox" name="drop-on" checked> Drop-off <input type="time" name="drop" value="08:00" aria-label="Drop-off time"></label>
+        <label class="trip"><input type="checkbox" name="pick-on" checked> Pick-up <input type="time" name="pick" value="15:00" aria-label="Pick-up time"></label>
+      </fieldset>
+      <fieldset>
+        <legend>School days</legend>
+        <div class="days">
+          <label><input type="checkbox" name="day" value="1" checked><span>Mon</span></label>
+          <label><input type="checkbox" name="day" value="2" checked><span>Tue</span></label>
+          <label><input type="checkbox" name="day" value="3" checked><span>Wed</span></label>
+          <label><input type="checkbox" name="day" value="4" checked><span>Thu</span></label>
+          <label><input type="checkbox" name="day" value="5" checked><span>Fri</span></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Extra time on top of a bad-day drive</legend>
+        <div class="days">
+          <label><input type="radio" name="buffer" value="5"><span>5 min</span></label>
+          <label><input type="radio" name="buffer" value="10" checked><span>10 min</span></label>
+          <label><input type="radio" name="buffer" value="15"><span>15 min</span></label>
+          <label><input type="radio" name="buffer" value="20"><span>20 min</span></label>
+        </div>
+      </fieldset>
+      <p class="msg" id="setup-msg" role="status"></p>
+      <div class="actions"><button type="submit" class="primary">Save</button><button type="button" class="ghost" id="setup-cancel" hidden>Cancel</button></div>
+    </form>
+  </section>
+</template>
+
+<template id="tpl-trip">
+  <section class="card hero" id="hero">
+    <div class="when" id="t-when"></div>
+    <div class="leave-label" id="t-label">Leave by</div>
+    <div class="leave" id="t-leave">…</div>
+    <div class="count" id="t-count"></div>
+    <div class="dest" id="t-dest"></div>
+    <div class="verdict" id="t-verdict" role="status"></div>
+    <div class="math" id="t-math"></div>
+  </section>
+  <section class="card map-card"><div id="map" aria-label="Map of your route"></div><div class="via" id="t-via"></div></section>
+  <section class="card" id="on-way">
+    <h2>On your way</h2>
+    <ul class="events" id="t-events"></ul>
+  </section>
+  <section class="card" id="elsewhere" hidden>
+    <h2>Also in San Francisco</h2>
+    <ul class="events" id="t-city"></ul>
+  </section>
+  <section class="card">
+    <h2>Coming up</h2>
+    <ul class="week" id="t-week"></ul>
+  </section>
+  <p class="updated" id="t-updated"></p>
+</template>
+
+<script src="/vendor/leaflet/leaflet.js"></script>
+<script src="/app.js" type="module"></script>
+<script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

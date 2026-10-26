@@ -1,0 +1,14 @@
+{
+  "name": "Pick Me Up",
+  "short_name": "Pick Me Up",
+  "description": "When to leave for school in San Francisco, planned for a bad-traffic day.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f3ec",
+  "theme_color": "#f7f3ec",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
