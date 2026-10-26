@@ -102,7 +102,7 @@ img.onload = () => {
 img.src = 'data:image/jpeg;base64,${art}';
 </script>
 <div class="left">
-  <div class="k">${ICON} San Francisco · school carpool</div>
+  <div class="k">${ICON} San Francisco</div>
   <h1 class="soft">Pick Me Up <span class="decal"><i></i><i></i><i></i></span></h1>
   <p class="tl">Know when to leave for school,<br>planned for a bad-traffic day.</p>
   <p class="sub">Leave-by countdown · games, concerts, conventions<br>and street closures checked along your route</p>
