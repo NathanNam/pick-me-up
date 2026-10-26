@@ -324,13 +324,14 @@ function renderWeek(hero) {
   let queue = Promise.resolve();
   const rows = all.map((t) => {
     const li = el('li', t.skipped ? 'skipped' : '');
-    const d = el('div', 'd', t.day === addDays(sfDate(), 1) ? 'Tomorrow' : dayLabel(t.day).replace(/,.*/, ''));
-    d.append(el('small', null, dayLabel(t.day).replace(/^\w+, /, '')));
+    // Weekday on top; underneath, "Tomorrow" or the date.
+    const d = el('div', 'd', dayLabel(t.day).replace(/,.*/, ''));
+    d.append(el('small', null, t.day === addDays(sfDate(), 1) ? 'Tomorrow' : dayLabel(t.day).replace(/^\w+, /, '')));
     const dot = el('span', `dot ${t.skipped ? 'skip' : ''}`);
     const w = el('div', 'w');
     const leave = new Date(t.arriveBy - (settings.buffer + (settings.lastBadDayMin ?? 20)) * MIN);
     const head = el('div');
-    head.append(el('b', null, `${t.trip.label} ${clock(t.arriveBy)}`), el('div', 'ev-m', t.skipped ? 'No school' : `Leave about ${clock(leave)}`));
+    head.append(el('b', null, `${t.trip.label} ${clock(t.arriveBy)}`), el('div', 'ev-m', t.skipped ? 'No school' : `Leave by ${clock(leave)}`));
     const sub = el('div', 'ev-m', t.skipped ? '' : 'Checking events…');
     w.append(head, sub);
     const btn = el('button', 'skipbtn', t.trip.extra ? 'Remove' : t.skipped ? 'Undo' : 'Skip');

@@ -70,7 +70,7 @@ h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: v
 .week { list-style: none; margin: 0; padding: 0; }
 .week li { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
 .week li:first-child { border-top: 0; padding-top: 0; }
-.week .d { width: 58px; flex: none; font-weight: 800; line-height: 1.2; }
+.week .d { width: 72px; flex: none; font-weight: 800; line-height: 1.2; }
 .week .d small { display: block; font-weight: 600; color: var(--mute); font-size: 14px; }
 .week .w { flex: 1; min-width: 0; font-size: 15px; }
 .week .w b { font-weight: 800; }
