@@ -62,14 +62,17 @@ function eventsFor(day) {
 }
 
 /** The leave-by plan for one trip, reused for 5 minutes so reopening the app doesn't cost a lookup. */
+const planId = (t, s) => [t.day, t.trip.time, s.from.at, s.to.at, s.buffer].join('|');
 async function planFor(t, force) {
-  const id = [t.day, t.trip.time, settings.from.at, settings.to.at, settings.buffer].join('|');
+  const id = planId(t, settings);
   const saved = store.get(PLAN_KEY);
   if (!force && saved?.id === id && Date.now() - saved.at < 5 * MIN) {
     settings.lastRoute ??= saved.plan.polyline; settings.lastBadDayMin ??= saved.plan.badDayMin;
     return saved.plan;
   }
   const plan = await api('/api/plan', { from: settings.from.at, to: settings.to.at, arriveBy: t.arriveBy.toISOString(), bufferMin: settings.buffer });
+  // The places may have changed while this was on its way: then it's stale.
+  if (planId(t, settings) !== id) throw Object.assign(new Error('stale'), { stale: true });
   store.set(PLAN_KEY, { id, at: Date.now(), plan });
   // Remember the route and a typical bad-day time for the days ahead.
   settings.lastRoute = plan.polyline; settings.lastBadDayMin = plan.badDayMin;
@@ -79,6 +82,7 @@ async function planFor(t, force) {
 
 // ---- setup ----
 function renderSetup(existing) {
+  timers.forEach(clearInterval); timers = []; view++; map = null;
   document.getElementById('open-settings').hidden = true;
   app.replaceChildren(document.getElementById('tpl-setup').content.cloneNode(true));
   const form = $('#setup-form');
@@ -167,6 +171,7 @@ function renderSetup(existing) {
 
 // ---- trip view ----
 let map, layers, timers = [];
+let view = 0; // bumped whenever the screen is rebuilt, so late results for an old screen are dropped
 const ICON = { game: '🏟️', concert: '🎵', event: '🎪', roadwork: '🚧', incident: '⚠️' };
 const miles = (m) => (m < 160 ? 'A block from your route' : `About ${(m / 1609.34).toFixed(1)} mi from your route`);
 
@@ -200,7 +205,9 @@ function drawMap(route, assessed) {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(map);
     layers = L.layerGroup().addTo(map);
-    new ResizeObserver(() => map.invalidateSize()).observe(document.getElementById('map'));
+    const m = map;
+    const ro = new ResizeObserver(() => { if (map === m) m.invalidateSize(); else ro.disconnect(); });
+    ro.observe(document.getElementById('map'));
   }
   layers.clearLayers();
   const color = { on: '#c2410c', near: '#c98a12' };
@@ -241,6 +248,7 @@ function whenLabel(t) {
 async function renderTrip() {
   timers.forEach(clearInterval); timers = [];
   map = null;
+  const gen = ++view;
   document.getElementById('open-settings').hidden = false;
   app.replaceChildren(document.getElementById('tpl-trip').content.cloneNode(true));
   const next = upcoming(settings, 8).filter((t) => !t.skipped);
@@ -252,6 +260,7 @@ async function renderTrip() {
 
   let plan = null, planErr = null, evs = null, evErr = null;
   const draw = () => {
+    if (gen !== view) return;
     const route = plan?.polyline ? decodePolyline(plan.polyline) : settings.lastRoute ? decodePolyline(settings.lastRoute) : null;
     const leaveBy = plan ? new Date(plan.leaveBy) : new Date(t.arriveBy - (settings.buffer + (settings.lastBadDayMin ?? 20)) * MIN);
     const assessed = evs ? assess(evs.events, { leaveBy, arriveBy: t.arriveBy }, route) : [];
@@ -302,10 +311,10 @@ async function renderTrip() {
     drawMap(route, assessed);
   };
 
-  const loadPlan = (force) => planFor(t, force).then((p) => { plan = p; planErr = null; }).catch((e) => { planErr = e.message; }).finally(draw);
+  const loadPlan = (force) => planFor(t, force).then((p) => { plan = p; planErr = null; }).catch((e) => { if (!e.stale) planErr = e.message; }).finally(draw);
   const loadEvents = () => eventsFor(t.day).then((d) => { evs = d; evErr = null; }).catch((e) => { evErr = e.message; }).finally(draw);
   await Promise.all([loadPlan(false), loadEvents()]);
-  renderWeek(t);
+  if (gen === view) renderWeek(t);
 
   // Keep the countdown live; refresh the drive time every 5 minutes when the trip is
   // within three hours, and events every 10.
@@ -341,13 +350,45 @@ function renderWeek(hero) {
       else settings.skip = t.skipped ? settings.skip.filter((x) => x !== t.day) : [...settings.skip, t.day];
       store.set(KEY, settings); renderTrip();
     });
-    li.append(d, dot, w, btn);
+    // Tap a row to see everything about that trip.
+    const more = el('div', 'more');
+    more.hidden = true;
+    let found = null;
+    const fill = () => {
+      more.replaceChildren();
+      if (t.skipped) { more.append(el('p', null, 'Marked as no school. Tap Undo to bring this trip back.')); return; }
+      more.append(el('p', null, `Leave by ${clock(leave)} to be at ${settings.to.name} by ${clock(t.arriveBy)}: about ${settings.lastBadDayMin ?? 20} min on a bad day, plus your ${settings.buffer} min.`));
+      if (!found) { more.append(el('p', 'ev-m', 'Checking events…')); return; }
+      if (!found.length) more.append(el('p', null, 'Nothing unusual: no games, concerts, conventions or street closures along your way around then.'));
+      for (const e of found) {
+        const where = e.venue && !(e.where ?? '').startsWith(e.venue) ? [e.venue, e.where].filter(Boolean).join(' · ') : e.where;
+        const p1 = el('p', `ev ${e.level}`);
+        p1.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(e.title));
+        more.append(p1, el('p', 'ev-m', [`${e.window.label} ${span(e.window)}`, where, e.note].filter(Boolean).join(' · ')));
+      }
+      if (found.some((e) => e.level === 'on')) more.append(el('p', null, 'Something is on your route, so plan to leave about 10 minutes earlier.'));
+      more.append(el('p', 'ev-m', 'The exact drive time shows up at the top on the day.'));
+    };
+    w.tabIndex = 0;
+    w.setAttribute('role', 'button');
+    w.setAttribute('aria-expanded', 'false');
+    const toggle = () => {
+      more.hidden = !more.hidden;
+      li.classList.toggle('open', !more.hidden);
+      w.setAttribute('aria-expanded', String(!more.hidden));
+      if (!more.hidden) fill();
+    };
+    w.addEventListener('click', toggle);
+    w.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+    li.append(d, dot, w, btn, more);
     if (!t.skipped) queue = queue.then(() => eventsFor(t.day)).then((ev) => {
       const a = assess(ev.events, { leaveBy: leave, arriveBy: t.arriveBy }, route);
+      found = a;
       const lv = verdict(a);
       dot.className = `dot ${lv}`;
       const top = a.find((e) => e.level !== 'city') || a[0];
-      sub.textContent = top ? `${top.level === 'on' ? 'On your route' : top.level === 'near' ? 'Nearby' : 'In SF'}: ${top.title}` : 'Nothing unusual';
+      sub.textContent = top ? `${top.level === 'on' ? 'On your route' : top.level === 'near' ? 'Nearby' : 'In SF'}: ${top.title}${a.length > 1 ? ` +${a.length - 1}` : ''}` : 'Nothing unusual';
+      if (!more.hidden) fill();
     }).catch(() => { sub.textContent = "Couldn't check events"; });
     return li;
   });

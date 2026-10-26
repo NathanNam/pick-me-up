@@ -155,7 +155,7 @@ h2 { text-transform:none; letter-spacing:0; font-size:22px; color:#5a3417; font-
 .verdict::before { display:none; }
 .verdict.clear { background:#6f7d2c; color:#fffaf0; } .verdict.heads-up { background:#e5a630; color:#3a2616; } .verdict.watch { background:#d9631e; color:#fffaf0; }
 .leaflet-tile-pane { filter:sepia(.45) saturate(.8) brightness(1.03); }
-/* The carpool schedule is a ruled notepad page: every line of text sits on a rule. */
+/* Upcoming trips is a ruled notepad page: every line of text sits on a rule. */
 .sched { background:#fffdf6; position:relative; padding-left:40px; }
 .sched::before { content:""; position:absolute; left:26px; top:0; bottom:0; width:2px; background:#e8a0a0; }
 .sched h2 { line-height:32px; margin:0 0 8px; }
@@ -183,3 +183,16 @@ h2 { text-transform:none; letter-spacing:0; font-size:22px; color:#5a3417; font-
 .extra-add { margin-top: 8px; }
 .extra-add .find { margin-top: 0; flex: none; }
 .setup input[type=date], .setup input[type=time] { flex: 1; min-width: 0; }
+
+/* schedule rows open to show the whole story for that trip */
+.week li, .week li:first-child { flex-wrap: wrap; row-gap: 0; }
+.week .w { cursor: pointer; }
+.week .w:focus-visible { outline: 3px solid #e5a630; outline-offset: 2px; border-radius: 4px; }
+.week .w > div:first-child b::after { content: " ›"; color: var(--mute); font-weight: 700; }
+.week li.open .w > div:first-child b::after { content: " ⌄"; }
+.week li.open .w .ev-m { white-space: normal; }
+.week .more { flex-basis: 100%; margin-left: 94px; font-size: 15px; line-height: 24px; }
+.week .more p { margin: 0; line-height: 24px; }
+.week .more .ev { font-weight: 800; }
+.week .more .tag { line-height: 18px; padding: 0 6px; font-size: 11px; vertical-align: 1px; }
+@media (max-width: 420px) { .week .more { margin-left: 0; } }

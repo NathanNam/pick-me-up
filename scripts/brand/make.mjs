@@ -119,7 +119,7 @@ img.src = 'data:image/jpeg;base64,${art}';
     <div class="m">Bad-day drive <b>26 min</b> · usually 17 · plus 10 min</div>
   </div></div>
   <div class="note">
-    <h4 class="soft">Carpool schedule</h4>
+    <h4 class="soft">Upcoming trips</h4>
     <div><span class="dot" style="background:#6f7d2c"></span><b>Tue</b> · Pick-up 3:00 · nothing unusual</div>
     <div><span class="dot" style="background:#e5a630"></span><b>Wed</b> · Pick-up 3:00 · summit nearby</div>
     <div><span class="dot" style="background:#6f7d2c"></span><b>Thu</b> · Pick-up 3:00 · nothing unusual</div>
