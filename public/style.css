@@ -108,13 +108,18 @@ h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: v
 .foot { color: var(--mute); font-size: 13px; padding-top: 18px; padding-bottom: 28px; }
 .foot p { margin: 0 0 8px; }
 .foot a { color: var(--mute); }
+.sources { border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 12px; }
+.sources h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 6px; color: var(--mute); }
+.sources ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.sources b { color: var(--ink); font-weight: 700; margin-right: 4px; }
+@media (min-width: 980px) { .sources ul { grid-template-columns: 1fr 1fr; column-gap: 28px; } }
 
 @media (prefers-reduced-motion: no-preference) { .card { animation: up .25s ease-out; } @keyframes up { from { opacity: 0; transform: translateY(6px); } } }
 
 /* laptop: the answer and the map side by side, details underneath */
 @media (min-width: 980px) {
   .top, main, .foot { max-width: 1180px; }
-  .trip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "hero map" "onway sched" "city sched" "upd upd"; column-gap: 20px; align-items: start; }
+  .board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "hero map" "onway sched" "city sched" "upd upd"; column-gap: 20px; align-items: start; }
   #hero { grid-area: hero; }
   .map-card { grid-area: map; align-self: stretch; display: flex; flex-direction: column; margin-top: 12px; margin-bottom: 12px; }
   .map-card #map { flex: 1; min-height: 340px; height: auto; }

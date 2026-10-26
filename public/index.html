@@ -48,7 +48,20 @@
 
 <footer class="foot">
   <p id="privacy">Your addresses are saved only on this phone. They're sent to Google Maps to work out the drive, and never stored anywhere else.</p>
-  <p>Events: MLB and ESPN team schedules, Ticketmaster, SF Travel (Moscone), DataSF street closures, 511 traffic. Times are estimates; always allow extra on game days. · <a href="https://www.nathannam.com">Nathan Nam</a> · <a href="https://github.com/NathanNam/pick-me-up">code</a></p>
+  <div class="sources">
+    <h3>Where this comes from</h3>
+    <ul>
+      <li><b>Drive times</b> <a href="https://developers.google.com/maps/documentation/routes">Google Maps</a>, planned for a bad-traffic day</li>
+      <li><b>Giants games</b> <a href="https://www.mlb.com/giants/schedule">MLB</a></li>
+      <li><b>Warriors &amp; Valkyries games</b> <a href="https://www.espn.com/nba/team/schedule/_/name/gs">ESPN</a> team schedules</li>
+      <li><b>Concerts &amp; shows</b> <a href="https://www.ticketmaster.com/">Ticketmaster</a>: Chase Center, Oracle Park, Bill Graham, Golden Gate Park, Cow Palace</li>
+      <li><b>Moscone conventions</b> <a href="https://portal.sftravel.com/calendar_public/home_sfdc.cfm">SF Travel</a></li>
+      <li><b>Street closures</b> <a href="https://data.sfgov.org/Transportation/Temporary-Street-Closures/8x25-yybr">DataSF</a> permits (races, fairs, block parties, construction)</li>
+      <li><b>Incidents &amp; roadwork</b> <a href="https://511.org/traffic">511.org</a>, today only</li>
+      <li><b>Map</b> <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a></li>
+    </ul>
+  </div>
+  <p>Times are estimates, and event end times are usually estimated. Always allow extra on game days. Not affiliated with any team, venue or agency. · <a href="https://www.nathannam.com">Nathan Nam</a> · <a href="https://github.com/NathanNam/pick-me-up">code</a></p>
 </footer>
 
 <template id="tpl-setup">
@@ -99,7 +112,7 @@
 </template>
 
 <template id="tpl-trip">
-  <div class="trip">
+  <div class="board">
     <section class="card hero" id="hero"><div class="door">
       <div class="when" id="t-when"></div>
       <div class="leave-label" id="t-label">Leave by</div>

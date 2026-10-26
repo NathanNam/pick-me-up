@@ -155,7 +155,7 @@ function eventItem(e) {
   const body = el('div');
   const t = el('div', 'ev-t');
   t.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(e.title));
-  const where = [e.venue && e.venue !== e.where ? e.venue : '', e.where].filter(Boolean).join(' · ');
+  const where = e.venue && !(e.where ?? '').startsWith(e.venue) ? [e.venue, e.where].filter(Boolean).join(' · ') : e.where;
   const meta = el('div', 'ev-m', `${e.window.label} ${span(e.window)}${where ? ' · ' + where : ''}`);
   body.append(t, meta);
   if (e.level === 'near' && e.distance != null) body.append(el('div', 'ev-m', miles(e.distance)));
