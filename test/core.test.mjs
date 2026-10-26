@@ -90,3 +90,10 @@ test('reads Moscone conventions from the SF Travel calendar', () => {
     + '<tr><td>Other Show</td><td>Org</td><td>Dec 1, 2026 - Dec 2, 2026</td><td>Venue Type:</td><td>Hotel</td></tr>';
   assert.deepEqual(parseConventions(html), [{ name: 'Microsoft IGNITE 2026', from: '2026-11-17', to: '2026-11-20' }]);
 });
+
+import { extraMinutes } from '../public/lib/impact.js';
+test('extra minutes: 10 for a crowd on the route, 5 for a closed street, 0 otherwise', () => {
+  assert.equal(extraMinutes([{ level: 'on', reach: 'venue' }]), 10);
+  assert.equal(extraMinutes([{ level: 'on', reach: 'closure' }]), 5);
+  assert.equal(extraMinutes([{ level: 'near', reach: 'venue' }, { level: 'city', reach: 'venue' }]), 0);
+});

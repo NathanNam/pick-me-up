@@ -53,3 +53,15 @@ export function verdict(assessed) {
   if (assessed.some((e) => e.level === 'near')) return 'heads-up';
   return 'clear';
 }
+
+/**
+ * Extra minutes to leave earlier for what's on the route: a crowd or a major
+ * incident is worth 10; a closed street, which Google may already route
+ * around, is worth 5.
+ */
+export function extraMinutes(assessed) {
+  const on = assessed.filter((e) => e.level === 'on');
+  if (on.some((e) => e.reach !== 'closure')) return 10;
+  if (on.length) return 5;
+  return 0;
+}

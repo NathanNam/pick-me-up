@@ -6,7 +6,7 @@
 // the server that lists events never learns where anyone lives.
 import { decodePolyline } from './lib/geo.js';
 import { sfDate, sfWeekday, sfTime, addDays, clock, dayLabel } from './lib/time.js';
-import { assess, verdict } from './lib/impact.js';
+import { assess, verdict, extraMinutes } from './lib/impact.js';
 
 const KEY = 'pickmeup.v1';
 const PLAN_KEY = 'pickmeup.plan.v1';
@@ -62,12 +62,15 @@ function eventsFor(day) {
 }
 
 /** The leave-by plan for one trip, reused for 5 minutes so reopening the app doesn't cost a lookup. */
+/** Minutes for a bad-day drive on this trip, from the last time it was planned. */
+const badDay = (trip) => settings.badDay?.[trip.id] ?? settings.lastBadDayMin ?? 20;
 const planId = (t, s) => [t.day, t.trip.time, s.from.at, s.to.at, s.buffer].join('|');
 async function planFor(t, force) {
   const id = planId(t, settings);
   const saved = store.get(PLAN_KEY);
   if (!force && saved?.id === id && Date.now() - saved.at < 5 * MIN) {
     settings.lastRoute ??= saved.plan.polyline; settings.lastBadDayMin ??= saved.plan.badDayMin;
+    settings.badDay = { ...settings.badDay, [t.trip.id]: saved.plan.badDayMin };
     return saved.plan;
   }
   const plan = await api('/api/plan', { from: settings.from.at, to: settings.to.at, arriveBy: t.arriveBy.toISOString(), bufferMin: settings.buffer });
@@ -76,6 +79,7 @@ async function planFor(t, force) {
   store.set(PLAN_KEY, { id, at: Date.now(), plan });
   // Remember the route and a typical bad-day time for the days ahead.
   settings.lastRoute = plan.polyline; settings.lastBadDayMin = plan.badDayMin;
+  settings.badDay = { ...settings.badDay, [t.trip.id]: plan.badDayMin };
   store.set(KEY, settings);
   return plan;
 }
@@ -161,7 +165,7 @@ function renderSetup(existing) {
       to: { ...chosen.to, name: form.querySelector('[data-place=to] [name=name]').value.trim() || 'School' },
       trips, days, extras, buffer: +form.querySelector('[name=buffer]:checked').value,
       skip: (existing?.skip ?? []).filter((d) => d >= sfDate()),
-      lastRoute: moved ? null : existing?.lastRoute, lastBadDayMin: moved ? null : existing?.lastBadDayMin,
+      lastRoute: moved ? null : existing?.lastRoute, lastBadDayMin: moved ? null : existing?.lastBadDayMin, badDay: moved ? {} : existing?.badDay ?? {},
     };
     if (!store.set(KEY, settings)) msg.textContent = "This browser won't save settings (private mode?), so you'll need to enter them again next time.";
     try { localStorage.removeItem(PLAN_KEY); } catch {}
@@ -186,7 +190,7 @@ function eventItem(e) {
   li.append(el('div', 'ico', ICON[e.kind] || '📍'));
   const body = el('div');
   const t = el('div', 'ev-t');
-  t.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(e.title));
+  t.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(' ' + e.title));
   const where = e.venue && !(e.where ?? '').startsWith(e.venue) ? [e.venue, e.where].filter(Boolean).join(' · ') : e.where;
   const meta = el('div', 'ev-m', `${e.window.label} ${span(e.window)}${where ? ' · ' + where : ''}`);
   body.append(t, meta);
@@ -262,13 +266,14 @@ async function renderTrip() {
   const draw = () => {
     if (gen !== view) return;
     const route = plan?.polyline ? decodePolyline(plan.polyline) : settings.lastRoute ? decodePolyline(settings.lastRoute) : null;
-    const leaveBy = plan ? new Date(plan.leaveBy) : new Date(t.arriveBy - (settings.buffer + (settings.lastBadDayMin ?? 20)) * MIN);
+    const leaveBy = plan ? new Date(plan.leaveBy) : new Date(t.arriveBy - (settings.buffer + badDay(t.trip)) * MIN);
     const assessed = evs ? assess(evs.events, { leaveBy, arriveBy: t.arriveBy }, route) : [];
     const level = verdict(assessed);
     const hero = $('#hero'), now = Date.now();
     hero.classList.remove('now', 'late');
     if (plan) {
-      const safeLeave = level === 'watch' ? new Date(leaveBy - 10 * MIN) : leaveBy;
+      const extra = extraMinutes(assessed);
+      const safeLeave = new Date(leaveBy - extra * MIN);
       if (now < leaveBy) {
         $('#t-label').textContent = 'Leave by';
         $('#t-leave').textContent = clock(safeLeave > now ? safeLeave : leaveBy);
@@ -286,7 +291,7 @@ async function renderTrip() {
       const math = $('#t-math');
       math.replaceChildren();
       math.append(document.createTextNode('Bad-day drive '), el('b', null, `${plan.badDayMin} min`), document.createTextNode(` · usually ${plan.usualMin} · plus your ${plan.bufferMin} min`));
-      if (level === 'watch' && now < safeLeave) math.append(el('div', null, `Includes 10 extra min for what's on your route (${clock(leaveBy)} otherwise).`));
+      if (extra && now < safeLeave) math.append(el('div', null, `Includes ${extra} extra min for what's on your route (${clock(leaveBy)} otherwise).`));
       $('#t-via').textContent = `${plan.miles} mi${plan.via ? ` via ${plan.via}` : ''} · ${settings.from.name} → ${settings.to.name}`;
     } else if (planErr) {
       $('#t-leave').textContent = '—';
@@ -338,9 +343,13 @@ function renderWeek(hero) {
     d.append(el('small', null, t.day === addDays(sfDate(), 1) ? 'Tomorrow' : dayLabel(t.day).replace(/^\w+, /, '')));
     const dot = el('span', `dot ${t.skipped ? 'skip' : ''}`);
     const w = el('div', 'w');
-    const leave = new Date(t.arriveBy - (settings.buffer + (settings.lastBadDayMin ?? 20)) * MIN);
+    const mins = badDay(t.trip);
+    const leave = new Date(t.arriveBy - (settings.buffer + mins) * MIN);
+    let extra = 0;
+    const leaveText = () => `Leave by ${clock(new Date(leave - extra * MIN))}`;
     const head = el('div');
-    head.append(el('b', null, `${t.trip.label} ${clock(t.arriveBy)}`), el('div', 'ev-m', t.skipped ? 'No school' : `Leave by ${clock(leave)}`));
+    const leaveLine = el('div', 'ev-m', t.skipped ? 'No school' : leaveText());
+    head.append(el('b', null, `${t.trip.label} ${clock(t.arriveBy)}`), leaveLine);
     const sub = el('div', 'ev-m', t.skipped ? '' : 'Checking events…');
     w.append(head, sub);
     const btn = el('button', 'skipbtn', t.trip.extra ? 'Remove' : t.skipped ? 'Undo' : 'Skip');
@@ -357,16 +366,18 @@ function renderWeek(hero) {
     const fill = () => {
       more.replaceChildren();
       if (t.skipped) { more.append(el('p', null, 'Marked as no school. Tap Undo to bring this trip back.')); return; }
-      more.append(el('p', null, `Leave by ${clock(leave)} to be at ${settings.to.name} by ${clock(t.arriveBy)}: about ${settings.lastBadDayMin ?? 20} min on a bad day, plus your ${settings.buffer} min.`));
+      more.append(el('p', null, `${leaveText()} to be at ${settings.to.name} by ${clock(t.arriveBy)}: about ${mins} min on a bad day, plus your ${settings.buffer} min${extra ? `, plus ${extra} min for what's on your route` : ''}.`));
       if (!found) { more.append(el('p', 'ev-m', 'Checking events…')); return; }
       if (!found.length) more.append(el('p', null, 'Nothing unusual: no games, concerts, conventions or street closures along your way around then.'));
       for (const e of found) {
         const where = e.venue && !(e.where ?? '').startsWith(e.venue) ? [e.venue, e.where].filter(Boolean).join(' · ') : e.where;
         const p1 = el('p', `ev ${e.level}`);
-        p1.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(e.title));
+        p1.append(el('span', 'tag', e.level === 'on' ? 'On your route' : e.level === 'near' ? 'Nearby' : 'In SF'), document.createTextNode(' ' + e.title));
         more.append(p1, el('p', 'ev-m', [`${e.window.label} ${span(e.window)}`, where, e.note].filter(Boolean).join(' · ')));
       }
-      if (found.some((e) => e.level === 'on')) more.append(el('p', null, 'Something is on your route, so plan to leave about 10 minutes earlier.'));
+      if (extra) more.append(el('p', null, found.some((e) => e.level === 'on' && e.reach !== 'closure')
+        ? `That's why it says to leave ${extra} minutes earlier than usual.`
+        : `A closed street on your way: Google may route around it, but the time above allows ${extra} extra minutes.`));
       more.append(el('p', 'ev-m', 'The exact drive time shows up at the top on the day.'));
     };
     w.tabIndex = 0;
@@ -384,6 +395,8 @@ function renderWeek(hero) {
     if (!t.skipped) queue = queue.then(() => eventsFor(t.day)).then((ev) => {
       const a = assess(ev.events, { leaveBy: leave, arriveBy: t.arriveBy }, route);
       found = a;
+      extra = extraMinutes(a);
+      leaveLine.textContent = leaveText();
       const lv = verdict(a);
       dot.className = `dot ${lv}`;
       const top = a.find((e) => e.level !== 'city') || a[0];
